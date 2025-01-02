@@ -16,7 +16,7 @@ const Login = () => {
     // Simulate authentication for now
     if (username === 'admin' && password === 'password') {
       localStorage.setItem('isLoggedIn', 'true');
-      navigate('/dashboard'); // Redirect to the dashboard
+      navigate('/dashboard'); 
     } else {
       setErrorMessage("Invalid username or password");
     }
