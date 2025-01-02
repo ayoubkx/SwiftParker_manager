@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import NavBar from './Components/NavBar/NavBar';
 import Login from './Components/Login/Login';
 import CRUD from './Components/CRUD/CRUD';
 import './App.css';
@@ -7,6 +8,7 @@ function App() {
   return (
 
     <Router>
+      <NavBar />
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/login" element={<Login />} />
