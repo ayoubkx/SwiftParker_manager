@@ -1,0 +1,91 @@
+.crud-container {
+    width: 90%;
+    max-width: 800px;
+    margin: auto;
+    text-align: center;
+    display: flex;
+    flex-direction: column; 
+    justify-content: center; 
+    align-items: center; 
+    height: 100vh; 
+    gap: 20px; 
+  }
+  
+  h1 {
+    margin-bottom: 20px;
+    font-size: 2rem;
+    color: #333;
+  }
+  
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+  }
+  
+  table th,
+  table td {
+    padding: 10px;
+    border: 1px solid #ccc;
+    text-align: left;
+  }
+  
+  table th {
+    background-color: #f4f4f4;
+  }
+  
+  table tr:nth-child(even) {
+    background-color: #f9f9f9;
+  }
+  
+  button {
+    padding: 8px 12px;
+    margin: 0 5px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  button:hover {
+    opacity: 0.8;
+  }
+  
+  button:nth-child(1) {
+    background-color: #3277d8;
+    color: white;
+  }
+  
+  button:nth-child(2) {
+    background-color: #d83232;
+    color: white;
+  }
+  
+  .add-form,
+  .edit-form {
+    margin-top: 20px;
+  }
+  
+  .add-form input,
+  .edit-form input {
+    padding: 10px;
+    margin: 5px;
+    width: calc(50% - 20px);
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  
+  .add-form button,
+  .edit-form button {
+    padding: 10px 20px;
+    background-color: #3277d8;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .add-form button:hover,
+  .edit-form button:hover {
+    opacity: 0.8;
+  }
+  
