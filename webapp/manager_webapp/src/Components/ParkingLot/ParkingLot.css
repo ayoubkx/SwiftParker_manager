@@ -1,0 +1,43 @@
+.parking-lot-container {
+    width: 90%;
+    max-width: 800px;
+    margin: 40px auto;
+    text-align: left;
+    font-family: Arial, sans-serif;
+    color: #333;
+  }
+  
+  h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 2rem;
+  }
+  
+  .parking-lot-table {
+    width: 100%;
+    border-collapse: collapse;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    margin-top: 20px;
+  }
+  
+  .parking-lot-table td {
+    padding: 15px;
+    border: 1px solid #ccc;
+    text-align: left;
+    font-size: 1rem;
+  }
+  
+  .parking-lot-table td:first-child {
+    font-weight: bold;
+    background-color: #f9f9f9;
+  }
+  
+  .parking-lot-table ul {
+    padding-left: 20px;
+    margin: 0;
+  }
+  
+  .parking-lot-table ul li {
+    list-style-type: disc;
+  }
+  

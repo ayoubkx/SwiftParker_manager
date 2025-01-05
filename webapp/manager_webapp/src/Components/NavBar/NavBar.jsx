@@ -25,10 +25,10 @@ const NavBar = () => {
         {/* Navigation Menu */}
         <ul className="nav-menu">
           <li className="nav-item">
-            <Link to="/" className="nav-links">Home</Link>
+            <Link to="/crud" className="nav-links">CRUD</Link>
           </li>
           <li className="nav-item">
-            <Link to="/crud" className="nav-links">CRUD</Link>
+            <Link to="/parkinglot" className="nav-links">Parking Lot</Link>
           </li>
           <li className="nav-item logout-button" onClick={handleLogout}>
             <span className="nav-links">Logout</span>
