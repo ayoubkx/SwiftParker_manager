@@ -3,18 +3,40 @@ import "./CRUD.css";
 
 const CRUD = () => {
   const [users, setUsers] = useState([
-    { id: 1, name: "John Doe", email: "john.doe@example.com" },
-    { id: 2, name: "Jane Smith", email: "jane.smith@example.com" },
-    { id: 3, name: "Alice Johnson", email: "alice.johnson@example.com" },
+    { 
+      id: 1, 
+      name: "John Doe", 
+      email: "john.doe@example.com", 
+      phoneNumber: "123-456-7890", 
+      licensePlate: "ABC123", 
+      isSubscribed: true 
+    },
+    { 
+      id: 2, 
+      name: "Jane Smith", 
+      email: "jane.smith@example.com", 
+      phoneNumber: "987-654-3210", 
+      licensePlate: "XYZ789", 
+      isSubscribed: false 
+    },
   ]);
 
-  const [newUser, setNewUser] = useState({ name: "", email: "" });
+  const [newUser, setNewUser] = useState({ 
+    name: "", 
+    email: "", 
+    phoneNumber: "", 
+    licensePlate: "", 
+    isSubscribed: false 
+  });
+
   const [editingUser, setEditingUser] = useState(null);
+  const [showAddForm, setShowAddForm] = useState(false); 
 
   const handleAddUser = () => {
     if (newUser.name && newUser.email) {
       setUsers([...users, { id: Date.now(), ...newUser }]);
-      setNewUser({ name: "", email: "" });
+      setNewUser({ name: "", email: "", phoneNumber: "", licensePlate: "", isSubscribed: false });
+      setShowAddForm(false); 
     }
   };
 
@@ -45,6 +67,9 @@ const CRUD = () => {
             <th>ID</th>
             <th>Name</th>
             <th>Email</th>
+            <th>Phone</th>
+            <th>License Plate</th>
+            <th>Subscribed</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -54,6 +79,9 @@ const CRUD = () => {
               <td>{user.id}</td>
               <td>{user.name}</td>
               <td>{user.email}</td>
+              <td>{user.phoneNumber}</td>
+              <td>{user.licensePlate}</td>
+              <td>{user.isSubscribed ? "Yes" : "No"}</td>
               <td>
                 <button onClick={() => handleEditUser(user)}>Edit</button>
                 <button onClick={() => handleDeleteUser(user.id)}>Delete</button>
@@ -63,8 +91,15 @@ const CRUD = () => {
         </tbody>
       </table>
 
-      <div className="forms-container">
-        {/* Add User Form */}
+      {/* Add User Button */}
+      {!showAddForm && (
+        <button className="add-user-button" onClick={() => setShowAddForm(true)}>
+          Add User
+        </button>
+      )}
+
+      {/* Add User Form */}
+      {showAddForm && (
         <div className="add-form">
           <h2>Add User</h2>
           <input
@@ -79,33 +114,84 @@ const CRUD = () => {
             value={newUser.email}
             onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
           />
-          <button onClick={handleAddUser}>Add</button>
-        </div>
-
-        {/* Edit User Form */}
-        {editingUser && (
-          <div className="edit-form">
-            <h2>Edit User</h2>
+          <input
+            type="text"
+            placeholder="Phone Number"
+            value={newUser.phoneNumber}
+            onChange={(e) => setNewUser({ ...newUser, phoneNumber: e.target.value })}
+          />
+          <input
+            type="text"
+            placeholder="License Plate"
+            value={newUser.licensePlate}
+            onChange={(e) => setNewUser({ ...newUser, licensePlate: e.target.value })}
+          />
+          <label>
+            <span>Subscribed</span>
             <input
-              type="text"
-              placeholder="Name"
-              value={editingUser.name}
-              onChange={(e) =>
-                setEditingUser({ ...editingUser, name: e.target.value })
-              }
+              type="checkbox"
+              checked={newUser.isSubscribed}
+              onChange={(e) => setNewUser({ ...newUser, isSubscribed: e.target.checked })}
             />
-            <input
-              type="email"
-              placeholder="Email"
-              value={editingUser.email}
-              onChange={(e) =>
-                setEditingUser({ ...editingUser, email: e.target.value })
-              }
-            />
-            <button onClick={handleUpdateUser}>Update</button>
+          </label>
+          <div className="form-buttons">
+            <button onClick={handleAddUser}>Add</button>
+            <button onClick={() => setShowAddForm(false)} className="close-button">
+              Close
+            </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Edit User Form */}
+      {editingUser && (
+        <div className="edit-form">
+          <h2>Edit User</h2>
+          <input
+            type="text"
+            placeholder="Name"
+            value={editingUser.name}
+            onChange={(e) =>
+              setEditingUser({ ...editingUser, name: e.target.value })
+            }
+          />
+          <input
+            type="email"
+            placeholder="Email"
+            value={editingUser.email}
+            onChange={(e) =>
+              setEditingUser({ ...editingUser, email: e.target.value })
+            }
+          />
+          <input
+            type="text"
+            placeholder="Phone Number"
+            value={editingUser.phoneNumber}
+            onChange={(e) =>
+              setEditingUser({ ...editingUser, phoneNumber: e.target.value })
+            }
+          />
+          <input
+            type="text"
+            placeholder="License Plate"
+            value={editingUser.licensePlate}
+            onChange={(e) =>
+              setEditingUser({ ...editingUser, licensePlate: e.target.value })
+            }
+          />
+          <label>
+            <span>Subscribed</span>
+            <input
+              type="checkbox"
+              checked={editingUser.isSubscribed}
+              onChange={(e) =>
+                setEditingUser({ ...editingUser, isSubscribed: e.target.checked })
+              }
+            />
+          </label>
+          <button onClick={handleUpdateUser}>Update</button>
+        </div>
+      )}
     </div>
   );
 };
