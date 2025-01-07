@@ -34,7 +34,7 @@ const Login = () => {
         <div className="input-box">
           <input 
             type="text"
-            placeholder="Username"
+            placeholder="E-mail"
             required
             value={username}
             onChange={(e) => setUsername(e.target.value)}

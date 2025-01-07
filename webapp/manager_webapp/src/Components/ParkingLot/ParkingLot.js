@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import "./ParkingLot.css";
 
 const ParkingLot = () => {
@@ -7,10 +8,17 @@ const ParkingLot = () => {
     lotId: 1,
     name: "Eaton Center Parking",
     manager: "Khaled",
-    location: "Montreal, QC",
+    location: "1801 Av. McGill College, Montréal, QC H3A 1Z4",
     tariffs: "$3/hour, $20/day",
-    floors: 3,
+    floors: ["Floor 1", "Floor 2", "Floor 3"],
     devices: ["Controller A", "Controller B", "Controller C"],
+  };
+
+  const navigate = useNavigate();
+
+  const handleManageFloor = (floor) => {
+    const floorNumber = floor.split(" ")[1]; // Extract floor number
+    navigate(`/floor/${floorNumber}`);
   };
 
   return (
@@ -40,16 +48,23 @@ const ParkingLot = () => {
           </tr>
           <tr>
             <td>Floors</td>
-            <td>{parkingLot.floors}</td>
+            <td>
+            {parkingLot.floors.map((floor, index) => (
+                <div key={index} className="item-row">
+                  <span>{floor}</span>
+                  <button onClick={() => handleManageFloor(floor)}>Manage</button>
+                </div>
+              ))}
+            </td>
           </tr>
           <tr>
             <td>Devices</td>
             <td>
-              <ul>
-                {parkingLot.devices.map((device, index) => (
-                  <li key={index}>{device}</li>
-                ))}
-              </ul>
+              {parkingLot.devices.map((device, index) => (
+                <div key={index} className="item-row">
+                  <span>{device}</span>
+                </div>
+              ))}
             </td>
           </tr>
         </tbody>
