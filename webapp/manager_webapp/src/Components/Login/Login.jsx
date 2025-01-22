@@ -105,6 +105,13 @@ const Login = () => {
           <FcGoogle className="google-icon" />
           {isSigningIn ? 'Signing In...' : 'Continue with Google'}
         </button>
+
+        <div className="register-link">
+          <span>Don't have an account? </span>
+          <Link to="/register" className="text-indigo-600 hover:underline font-bold">
+            Create Account
+          </Link>
+        </div>
       </form>
     </div>
   );

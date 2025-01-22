@@ -1,4 +1,4 @@
-import { auth } from "./firebaseconfig"
+import { auth } from "./firebaseconfig";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -8,9 +8,58 @@ import {
   signInWithPopup,
   GoogleAuthProvider,
 } from "firebase/auth";
+import API from '../api';
 
-export const doCreateUserWithEmailAndPassword = async (email, password) => {
-  return createUserWithEmailAndPassword(auth, email, password);
+// Create manager profile in Firebase
+async function createManagerProfile(userData) {
+  try {
+    // Check if manager already exists
+    const existingManagerQuery = await API.get(
+      `/managers.json?orderBy="authId"&equalTo="${userData.authId}"`
+    );
+
+    if (Object.keys(existingManagerQuery.data || {}).length > 0) {
+      console.log('Manager profile already exists');
+      return;
+    }
+
+    // Create new manager profile
+    const managerData = {
+      authId: userData.authId,
+      email: userData.email,
+      firstName: userData.firstName || '',
+      lastName: userData.lastName || '',
+      phoneNumber: userData.phoneNumber || '',
+      company: userData.company || '',
+      parkingLots: [],
+      createdAt: new Date().toISOString(),
+      isActive: true
+    };
+
+    await API.post('/managers.json', managerData);
+  } catch (error) {
+    console.error('Error creating manager profile:', error);
+    throw error;
+  }
+}
+
+export const doCreateUserWithEmailAndPassword = async (email, password, userData = {}) => {
+  try {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+
+    // Create manager profile
+    await createManagerProfile({
+      authId: user.uid,
+      email: user.email,
+      ...userData
+    });
+
+    return userCredential;
+  } catch (error) {
+    console.error('Error in registration:', error);
+    throw error;
+  }
 };
 
 export const doSignInWithEmailAndPassword = (email, password) => {
@@ -19,12 +68,24 @@ export const doSignInWithEmailAndPassword = (email, password) => {
 
 export const doSignInWithGoogle = async () => {
   const provider = new GoogleAuthProvider();
-  return signInWithPopup(auth, provider)
-    .then((result) => {
-      // You can use the user data here if needed
-      // const user = result.user;
-      return result;
+  try {
+    const result = await signInWithPopup(auth, provider);
+    const user = result.user;
+
+    // Create manager profile for Google sign-in
+    await createManagerProfile({
+      authId: user.uid,
+      email: user.email,
+      firstName: user.displayName?.split(' ')[0] || '',
+      lastName: user.displayName?.split(' ')[1] || '',
+      phoneNumber: user.phoneNumber || ''
     });
+
+    return result;
+  } catch (error) {
+    console.error('Error in Google sign-in:', error);
+    throw error;
+  }
 };
 
 export const doSignOut = () => {

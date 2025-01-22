@@ -166,3 +166,15 @@
 .login-link a:hover {
   text-decoration: underline;
 }
+
+.register-link {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.register-link a {
+  margin-left: 5px;
+  text-decoration: none;
+}

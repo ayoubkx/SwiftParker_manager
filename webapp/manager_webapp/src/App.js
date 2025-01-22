@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './backend/config/contexts/authContext';
 import NavBar from './Components/NavBar/NavBar';
 import Login from './Components/Login/Login';
+import Register from './Components/Login/Register';
 import ForgotPassword from './Components/Login/ForgotPassword';
 import CRUD from './Components/CRUD/CRUD';
 import ParkingLot from './Components/ParkingLot/ParkingLot';
@@ -31,6 +32,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/crud" element={
             <ProtectedRoute>
