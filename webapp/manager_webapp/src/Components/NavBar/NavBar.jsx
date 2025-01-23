@@ -16,7 +16,7 @@ const NavBar = () => {
       <div className="navbar-container">
         {/* Logo or Home */}
         
-        <Link to="/" className="navbar-logo">
+        <Link to="/home" className="navbar-logo">
         <img src={logo} alt="SwiftParker Logo" className="navbar-logo-image" />
         <span className="navbar-logo-text">SwiftParker Manager</span>
         </Link>
@@ -25,7 +25,7 @@ const NavBar = () => {
         {/* Navigation Menu */}
         <ul className="nav-menu">
           <li className="nav-item">
-            <Link to="/crud" className="nav-links">CRUD</Link>
+            <Link to="/crud" className="nav-links">Users</Link>
           </li>
           <li className="nav-item">
             <Link to="/parkinglot" className="nav-links">Parking Lot</Link>
