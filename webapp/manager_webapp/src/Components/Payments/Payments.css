@@ -1,0 +1,104 @@
+.payments-container {
+    width: 90%;
+    max-width: 1200px;
+    margin: 30px auto;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .payments-title {
+    font-family: "Arial", sans-serif;
+    font-size: 3rem;
+    font-weight: 700;
+    color: #333;
+    text-align: center;
+    margin-bottom: 0;
+  }
+  
+  .payments-description {
+    margin-top: 0;
+    font-family: "Arial", sans-serif;
+    font-size: 1.25rem;
+    font-weight: 400;
+    color: #555;
+    margin-bottom: 20px;
+  }
+  
+  .payments-table-container {
+    overflow-x: auto;
+  }
+  
+  .payments-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    border-radius: 0.75rem;
+    overflow: hidden;
+  }
+  
+  .payments-table th,
+  .payments-table td {
+    padding: 12px 15px;
+    text-align: left;
+  }
+  
+  .payments-table th {
+    background-color: #4CAF50;
+    color: white;
+    font-weight: 600;
+  }
+  
+  .payments-table tr {
+    border-bottom: 1px solid #dddddd;
+  }
+  
+  .payments-table tr:nth-of-type(even) {
+    background-color: #f3f3f3;
+  }
+  
+  .payments-table tr:last-of-type {
+    border-bottom: 2px solid #4CAF50;
+  }
+  
+  .payment-status {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+  
+  .payment-status.completed {
+    background-color: #d4edda;
+    color: #155724;
+  }
+  
+  .payment-status.pending {
+    background-color: #fff3cd;
+    color: #856404;
+  }
+  
+  .payment-action-cell {
+    text-align: center;
+  }
+  
+  .payment-action-button {
+    background-color: #2196F3;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    max-width: 120px; 
+  }
+  
+  .payment-action-button:hover {
+    background-color: #1976D2;
+  }

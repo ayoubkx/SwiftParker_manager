@@ -30,6 +30,9 @@ const NavBar = () => {
           <li className="nav-item">
             <Link to="/parkinglot" className="nav-links">Parking Lot</Link>
           </li>
+          <li className="nav-item">
+            <Link to="/payments" className="nav-links">Payments</Link>
+          </li>
           <li className="nav-item logout-button" onClick={handleLogout}>
             <span className="nav-links">Logout</span>
           </li>
