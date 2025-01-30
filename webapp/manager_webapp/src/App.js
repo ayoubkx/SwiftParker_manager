@@ -6,6 +6,7 @@ import ParkingLot from "./Components/ParkingLot/ParkingLot";
 import FloorDetails from "./Components/Floor/FloorDetails";
 import SpotsManagement from "./Components/Spots/SpotsManagement";
 import Payments from "./Components/Payments/Payments";
+import ParkingLog from "./Components/ParkingLog/ParkingLog";
 import Home from "./Components/Home/Home";
 
 function App() {
@@ -32,6 +33,7 @@ function AppContent() {
         <Route path="/CRUD" element={<CRUD />} />
         <Route path="/parkinglot" element={<ParkingLot />} />
         <Route path="/payments" element={<Payments />} />
+        <Route path="/parkinglog" element={<ParkingLog />} />
         <Route path="/floor/:floorNumber" element={<FloorDetails />} />
         <Route path="/row/:rowNumber/spots" element={<SpotsManagement />} />
       </Routes>
