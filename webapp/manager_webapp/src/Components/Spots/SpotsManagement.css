@@ -1,0 +1,106 @@
+.spots-management-container {
+  width: 90%;
+  max-width: 1000px;
+  margin: 40px auto;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 40px;
+}
+
+.spots-management-title {
+  font-family: "Roboto", sans-serif;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #333;
+  padding: 15px;
+  border-radius: 8px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.spots-management-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 30px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  table-layout: auto;
+}
+
+.spots-management-table th,
+.spots-management-table td {
+  padding: 15px;
+  border: 1px solid #ccc;
+  text-align: left;
+  font-size: 1rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spots-management-table th {
+  background-color: #f4f4f4;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.spots-management-table tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.spots-management-table td:last-child, 
+.spots-management-table th:last-child {
+  width: 150px; 
+  text-align: center; 
+}
+
+.spots-management-table tr:hover {
+  background-color: #f1f1f1;
+}
+
+.spots-management-add-button,
+.spots-management-edit-button,
+.spots-management-delete-button {
+  padding: 10px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.spots-management-add-button {
+  background-color: #3277d8;
+  color: white;
+}
+
+.spots-management-add-button:hover {
+  background-color: #275ea8;
+}
+
+.spots-management-delete-button {
+  background-color: #d83232;
+  color: white;
+}
+
+.spots-management-delete-button:hover {
+  background-color: #a82727;
+}
+
+.spots-management-add-form,
+.spots-management-edit-form {
+  margin-top: 20px;
+  padding: 20px;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 500px;
+}
+
+.spots-management-form-buttons {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}

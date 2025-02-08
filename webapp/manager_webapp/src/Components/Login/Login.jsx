@@ -16,7 +16,7 @@ const Login = () => {
     // Simulate authentication for now
     if (username === 'admin' && password === 'password') {
       localStorage.setItem('isLoggedIn', 'true');
-      navigate('/dashboard'); // Redirect to the dashboard
+      navigate('/home'); 
     } else {
       setErrorMessage("Invalid username or password");
     }
@@ -34,7 +34,7 @@ const Login = () => {
         <div className="input-box">
           <input 
             type="text"
-            placeholder="Username"
+            placeholder="E-mail"
             required
             value={username}
             onChange={(e) => setUsername(e.target.value)}
