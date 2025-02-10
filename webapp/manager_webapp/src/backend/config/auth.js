@@ -13,30 +13,22 @@ import API from '../api';
 // Create manager profile in Firebase
 async function createManagerProfile(userData) {
   try {
-    // Check if manager already exists
-    const existingManagerQuery = await API.get(
-      `/managers.json?orderBy="authId"&equalTo="${userData.authId}"`
-    );
-
-    if (Object.keys(existingManagerQuery.data || {}).length > 0) {
-      console.log('Manager profile already exists');
-      return;
-    }
-
-    // Create new manager profile
+    console.log("Creating manager profile with data:", userData);
+    
+    
     const managerData = {
-      authId: userData.authId,
+      managerId: userData.authId,
       email: userData.email,
       firstName: userData.firstName || '',
       lastName: userData.lastName || '',
       phoneNumber: userData.phoneNumber || '',
-      company: userData.company || '',
-      parkingLots: [],
-      createdAt: new Date().toISOString(),
-      isActive: true
+      parkingLots: [], // Empty array initialized
+      createdAt: new Date().toISOString()
     };
 
-    await API.post('/managers.json', managerData);
+    const response = await API.put(`/managers/${userData.authId}.json`, managerData);
+    console.log("Manager profile created:", response.data);
+    return response.data;
   } catch (error) {
     console.error('Error creating manager profile:', error);
     throw error;
@@ -45,8 +37,13 @@ async function createManagerProfile(userData) {
 
 export const doCreateUserWithEmailAndPassword = async (email, password, userData = {}) => {
   try {
+    console.log("Starting user registration with data:", { email, userData }); // Debug log
+    
+    // Create Firebase auth user
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
+    
+    console.log("Firebase auth user created:", user.uid); // Debug log
 
     // Create manager profile
     await createManagerProfile({
@@ -74,7 +71,7 @@ export const doSignInWithGoogle = async () => {
 
     // Create manager profile for Google sign-in
     await createManagerProfile({
-      authId: user.uid,
+      managerId: user.uid,
       email: user.email,
       firstName: user.displayName?.split(' ')[0] || '',
       lastName: user.displayName?.split(' ')[1] || '',

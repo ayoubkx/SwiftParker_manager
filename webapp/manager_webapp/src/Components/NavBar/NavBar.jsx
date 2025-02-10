@@ -19,7 +19,7 @@ const NavBar = () => {
   };
 
   if (!userLoggedIn) {
-    return null; // Don't show navbar when user is not logged in
+    return null;
   }
 
   return (
@@ -35,7 +35,10 @@ const NavBar = () => {
             <Link to="/crud" className="nav-links">CRUD</Link>
           </li>
           <li className="nav-item">
-            <Link to="/parkinglot" className="nav-links">Parking Lot</Link>
+            <Link to="/parking-list" className="nav-links">My Parking Lots</Link>
+          </li>
+          <li className="nav-item">
+            <Link to="/parkinglot" className="nav-links">Parking Details</Link>
           </li>
           <li className="nav-item logout-button" onClick={handleLogout}>
             <span className="nav-links">Logout</span>

@@ -13,8 +13,7 @@ const Register = () => {
         confirmPassword: '',
         firstName: '',
         lastName: '',
-        phoneNumber: '',
-        company: ''
+        phoneNumber: ''
     })
     const [isRegistering, setIsRegistering] = useState(false)
     const [errorMessage, setErrorMessage] = useState('')
@@ -49,8 +48,7 @@ const Register = () => {
                 const userData = {
                     firstName: formData.firstName,
                     lastName: formData.lastName,
-                    phoneNumber: formData.phoneNumber,
-                    company: formData.company
+                    phoneNumber: formData.phoneNumber
                 }
                 await doCreateUserWithEmailAndPassword(formData.email, formData.password, userData)
                 navigate('/dashboard')
@@ -128,20 +126,6 @@ const Register = () => {
                                 name="phoneNumber"
                                 required
                                 value={formData.phoneNumber}
-                                onChange={handleChange}
-                                className="w-full mt-2 px-3 py-2 text-gray-500 bg-transparent outline-none border focus:indigo-600 shadow-sm rounded-lg transition duration-300"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="text-sm text-gray-600 font-bold">
-                                Company Name
-                            </label>
-                            <input
-                                type="text"
-                                name="company"
-                                required
-                                value={formData.company}
                                 onChange={handleChange}
                                 className="w-full mt-2 px-3 py-2 text-gray-500 bg-transparent outline-none border focus:indigo-600 shadow-sm rounded-lg transition duration-300"
                             />
