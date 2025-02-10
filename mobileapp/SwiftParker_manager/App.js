@@ -1,20 +1,28 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import LoginScreen from "./Screens/LoginScreen";
+import ParkingSelectionScreen from "./Screens/ParkingSelectionScreen";
+import ManagerDashboardScreen from "./Screens/ManagerDashboardScreen";
+import ScanQRScreen from "./Screens/ScanQRScreen";
+import CheckPlatesScreen from "./Screens/CheckPlatesScreen";
+
+
+const Stack = createStackNavigator();
 
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="ParkingSelection" component={ParkingSelectionScreen} />
+            <Stack.Screen name="ManagerDashboard" component={ManagerDashboardScreen} />
+            <Stack.Screen name="ScanQRCode" component={ScanQRScreen} />
+            <Stack.Screen name="CheckPlates" component={CheckPlatesScreen} />
+
+
+
+        </Stack.Navigator>
+      </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});

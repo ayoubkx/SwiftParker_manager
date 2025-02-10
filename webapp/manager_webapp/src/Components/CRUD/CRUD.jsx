@@ -59,8 +59,9 @@ const CRUD = () => {
 
   return (
     <div className="crud-container">
-      <h1>User Management</h1>
-
+      <div className="crud-title">
+        User Management
+      </div>
       <table>
         <thead>
           <tr>

@@ -25,14 +25,16 @@ const NavBar = () => {
   return (
     <nav className="navbar">
       <div className="navbar-container">
-        <Link to="/dashboard" className="navbar-logo">
+        {/* Logo or Home */}
+
+        <Link to="/home" className="navbar-logo">
           <img src={logo} alt="SwiftParker Logo" className="navbar-logo-image" />
           <span className="navbar-logo-text">SwiftParker Manager</span>
         </Link>
 
         <ul className="nav-menu">
           <li className="nav-item">
-            <Link to="/crud" className="nav-links">CRUD</Link>
+            <Link to="/crud" className="nav-links">Users</Link>
           </li>
           <li className="nav-item">
             <Link to="/parking-list" className="nav-links">My Parking Lots</Link>
@@ -40,13 +42,22 @@ const NavBar = () => {
           <li className="nav-item">
             <Link to="/parkinglot" className="nav-links">Parking Details</Link>
           </li>
+          <li className="nav-item">
+            <Link to="/payments" className="nav-links">Payments</Link>
+          </li>
+          <li className="nav-item">
+            <Link to="/parkinglog" className="nav-links">Logs</Link>
+          </li>
           <li className="nav-item logout-button" onClick={handleLogout}>
             <span className="nav-links">Logout</span>
           </li>
         </ul>
       </div>
-    </nav>
+    </nav >
   );
 };
 
 export default NavBar;
+
+
+

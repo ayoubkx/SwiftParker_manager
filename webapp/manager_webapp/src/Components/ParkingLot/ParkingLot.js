@@ -23,7 +23,9 @@ const ParkingLot = () => {
 
   return (
     <div className="parking-lot-container">
+      <div className="parking-details-title">
       <h1>Parking Lot Details</h1>
+      </div>
       <table className="parking-lot-table">
         <tbody>
           <tr>

@@ -1,5 +1,5 @@
 import React from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import RowCard from "../Cards/RowCard/RowCard";
 import "./FloorDetails.css";
 
@@ -7,18 +7,22 @@ const FloorDetails = () => {
   const { floorNumber } = useParams();
 
   const rows = [
-    { rowNumber: 1, image: "https://via.placeholder.com/150?text=Row+1", spotCount: 10 },
-    { rowNumber: 2, image: "https://via.placeholder.com/150?text=Row+2", spotCount: 12 },
-    { rowNumber: 3, image: "https://via.placeholder.com/150?text=Row+3", spotCount: 15 },
+    { rowNumber: 1, spotCount: 10 },
+    { rowNumber: 2, spotCount: 12 },
+    { rowNumber: 3, spotCount: 15 },
   ];
 
+  const navigate = useNavigate();
+
   const handleManageSpots = (rowNumber) => {
-    alert(`Manage spots for Row ${rowNumber}`);
+    navigate(`/row/${rowNumber}/spots`);
   };
 
   return (
     <div className="floor-details-container">
-      <h1>Floor {floorNumber} Details</h1>
+      <div className="floor-title">
+        Floor {floorNumber} Details
+      </div>      
       <div className="rows-container">
         {rows.map((row) => (
           <RowCard key={row.rowNumber} row={row} onManageSpots={handleManageSpots} />
