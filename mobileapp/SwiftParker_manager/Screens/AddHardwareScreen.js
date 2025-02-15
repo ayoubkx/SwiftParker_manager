@@ -2,11 +2,13 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 
-const ManagerDashboardScreen = ({ route, navigation }) => {
-    const { parkingLot } = route.params;
-
-    const handleNavigation = (screenName) => {
-        navigation.navigate(screenName, { parkingLot });
+const AddHardwareScreen = ({ navigation }) => {
+    const handleSelection = (type) => {
+        if (type === "entry_exit") {
+            navigation.navigate("AddEntryExitModule"); // Correct screen name
+        } else if (type === "sensor") {
+            navigation.navigate("AddSensorModule"); // Correct screen name
+        }
     };
 
     return (
@@ -16,25 +18,19 @@ const ManagerDashboardScreen = ({ route, navigation }) => {
                 <FontAwesome5 name="arrow-left" size={24} color="#073b4c" />
             </TouchableOpacity>
 
-            <Text style={styles.title}>{parkingLot.name} Dashboard</Text>
+            <Text style={styles.title}>Select Hardware Type</Text>
 
             <View style={styles.grid}>
-                {/* Add Hardware Devices */}
-                <TouchableOpacity style={styles.option} onPress={() => handleNavigation('AddHardware')}>
-                    <FontAwesome5 name="microchip" size={50} color="#073b4c" />
-                    <Text style={styles.optionText}>Add Hardware</Text>
+                {/* Entry/Exit Module */}
+                <TouchableOpacity style={styles.option} onPress={() => handleSelection("entry_exit")}>
+                    <FontAwesome5 name="warehouse" size={50} color="#073b4c" />
+                    <Text style={styles.optionText}>Entry/Exit Module</Text>
                 </TouchableOpacity>
 
-                {/* Scan QR Code */}
-                <TouchableOpacity style={styles.option} onPress={() => handleNavigation('ScanQRCode')}>
-                    <FontAwesome5 name="qrcode" size={50} color="#073b4c" />
-                    <Text style={styles.optionText}>Scan QR Code</Text>
-                </TouchableOpacity>
-
-                {/* Check License Plates */}
-                <TouchableOpacity style={styles.option} onPress={() => handleNavigation('CheckPlates')}>
+                {/* Sensor Module */}
+                <TouchableOpacity style={styles.option} onPress={() => handleSelection("sensor")}>
                     <FontAwesome5 name="car" size={50} color="#073b4c" />
-                    <Text style={styles.optionText}>Check Plates</Text>
+                    <Text style={styles.optionText}>Sensor Module</Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -45,13 +41,14 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#edf2fb',
-        paddingHorizontal: 20,
-        paddingTop: 50, // Adjusted for back button
+        justifyContent: 'center',
         alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingTop: 60, // Added padding to prevent overlap with back button
     },
     backButton: {
         position: 'absolute',
-        top: 60,
+        top: 60, // Adjusted for better alignment
         left: 20,
         zIndex: 10,
     },
@@ -60,22 +57,20 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#073b4c',
         marginBottom: 30,
-        marginTop: 10,
     },
     grid: {
-        flexDirection: "column",
-        flexWrap: 'wrap',
+        flexDirection: 'row',
         justifyContent: 'center',
-        marginTop: 100,
+        width: '100%',
     },
     option: {
-        width: 150,
-        height: 150,
+        width: 140,
+        height: 140,
         backgroundColor: '#ffffff',
         justifyContent: 'center',
         alignItems: 'center',
         borderRadius: 10,
-        margin: 10,
+        margin: 15,
         shadowColor: '#000',
         shadowOpacity: 0.1,
         shadowOffset: { width: 0, height: 2 },
@@ -83,11 +78,12 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     optionText: {
-        fontSize: 14,
+        fontSize: 16,
         color: '#073b4c',
         marginTop: 10,
         textAlign: 'center',
+        fontWeight: 'bold',
     },
 });
 
-export default ManagerDashboardScreen;
+export default AddHardwareScreen;

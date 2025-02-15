@@ -6,6 +6,9 @@ import ParkingSelectionScreen from "./Screens/ParkingSelectionScreen";
 import ManagerDashboardScreen from "./Screens/ManagerDashboardScreen";
 import ScanQRScreen from "./Screens/ScanQRScreen";
 import CheckPlatesScreen from "./Screens/CheckPlatesScreen";
+import AddHardwareScreen from "./Screens/AddHardwareScreen";
+import AddSensorModuleScreen from "./Screens/AddSensorModuleScreen";
+import AddEntryExitModuleScreen from "./Screens/AddEntryExitModuleScreen";
 
 
 const Stack = createStackNavigator();
@@ -19,6 +22,10 @@ export default function App() {
             <Stack.Screen name="ManagerDashboard" component={ManagerDashboardScreen} />
             <Stack.Screen name="ScanQRCode" component={ScanQRScreen} />
             <Stack.Screen name="CheckPlates" component={CheckPlatesScreen} />
+            <Stack.Screen name="AddHardware" component={AddHardwareScreen} />
+            <Stack.Screen name="AddSensorModule" component={AddSensorModuleScreen} />
+            <Stack.Screen name="AddEntryExitModule" component={AddEntryExitModuleScreen} />
+
 
 
 

@@ -11,10 +11,10 @@ const CheckPlatesScreen = ({ navigation }) => {
 
         // Placeholder data (Later, fetch from backend)
         const dummyData = {
-            name: 'John Doe',
-            phone: '+1 234 567 890',
-            email: 'johndoe@example.com',
-            vehicle: 'Toyota Camry 2020',
+            name: 'jimmy fallon',
+            phone: '+1 514 449 6978',
+            email: 'jfallon@gmail.com',
+            subscription: 'subscribed',
         };
 
         setUserData(dummyData);
@@ -50,7 +50,7 @@ const CheckPlatesScreen = ({ navigation }) => {
                     <Text style={styles.resultText}>👤 Name: {userData.name}</Text>
                     <Text style={styles.resultText}>📞 Phone: {userData.phone}</Text>
                     <Text style={styles.resultText}>✉️ Email: {userData.email}</Text>
-                    <Text style={styles.resultText}>🚗 Vehicle: {userData.vehicle}</Text>
+                    <Text style={styles.resultText}>🚗 Vehicle: {userData.subscription}</Text>
                 </View>
             )}
         </View>
