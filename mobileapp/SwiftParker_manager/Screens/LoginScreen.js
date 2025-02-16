@@ -1,24 +1,42 @@
-import React, { useState } from 'react';
+import React, {useState} from 'react';
 import {
-    View,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    StyleSheet,
+    ActivityIndicator,
+    Alert,
     Image,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
-    Alert,
-    ActivityIndicator
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../backend/firebaseConfig';
+import {signInWithEmailAndPassword} from 'firebase/auth';
+import {auth} from '../backend/firebaseConfig';
+import {get, ref} from 'firebase/database';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { database } from '../backend/firebaseConfig';
 
 const LoginScreen = ({ navigation }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+
+    const getManagerInfo = async (managerId) => {
+        try {
+            const snapshot = await get(ref(database, `managers/${managerId}`));
+            if (snapshot.exists()) {
+                return snapshot.val();
+            } else {
+                console.log('Manager data not found');
+                return null;
+            }
+        } catch (error) {
+            console.error('Error fetching manager data:', error);
+            return null;
+        }
+    };
 
     const handleLogin = async () => {
         if (email.trim() === '' || password.trim() === '') {
@@ -29,11 +47,24 @@ const LoginScreen = ({ navigation }) => {
         try {
             setLoading(true);
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
-            console.log('Logged in user:', userCredential.user.email);
-            navigation.navigate('ParkingSelection');
+            const managerId = userCredential.user.uid;
+
+            // Fetch manager data from Firebase Realtime Database
+            const managerData = await getManagerInfo(managerId);
+            if (managerData) {
+                // Store session data in AsyncStorage
+                await AsyncStorage.setItem('managerId', managerId);
+                await AsyncStorage.setItem('managerName', `${managerData.firstName} ${managerData.lastName}`);
+                await AsyncStorage.setItem('managerEmail', managerData.email);
+                await AsyncStorage.setItem('managerPhone', managerData.phoneNumber);
+
+                // Navigate to Parking Selection
+                navigation.navigate('ParkingSelection');
+            } else {
+                Alert.alert('Error', 'Manager profile not found in database.');
+            }
         } catch (error) {
             let errorMessage = 'An error occurred during login';
-            
             switch (error.code) {
                 case 'auth/user-not-found':
                     errorMessage = 'No user found with this email';
@@ -48,13 +79,13 @@ const LoginScreen = ({ navigation }) => {
                     errorMessage = 'Too many failed login attempts. Please try again later';
                     break;
             }
-            
             Alert.alert('Error', errorMessage);
             console.error('Login error:', error);
         } finally {
             setLoading(false);
         }
     };
+
 
     return (
         <KeyboardAvoidingView
