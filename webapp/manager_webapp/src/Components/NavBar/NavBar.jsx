@@ -40,9 +40,6 @@ const NavBar = () => {
             <Link to="/parking-list" className="nav-links">My Parking Lots</Link>
           </li>
           <li className="nav-item">
-            <Link to="/parkinglot" className="nav-links">Parking Details</Link>
-          </li>
-          <li className="nav-item">
             <Link to="/payments" className="nav-links">Payments</Link>
           </li>
           <li className="nav-item">
