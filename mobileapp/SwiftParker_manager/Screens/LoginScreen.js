@@ -8,16 +8,52 @@ import {
     Image,
     KeyboardAvoidingView,
     Platform,
-    ScrollView
+    ScrollView,
+    Alert,
+    ActivityIndicator
 } from 'react-native';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../backend/firebaseConfig';
 
 const LoginScreen = ({ navigation }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    const handleLogin = () => {
-        console.log('Logging in with:', email, password);
-        navigation.navigate('ParkingSelection');
+    const handleLogin = async () => {
+        if (email.trim() === '' || password.trim() === '') {
+            Alert.alert('Error', 'Please fill in all fields');
+            return;
+        }
+
+        try {
+            setLoading(true);
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            console.log('Logged in user:', userCredential.user.email);
+            navigation.navigate('ParkingSelection');
+        } catch (error) {
+            let errorMessage = 'An error occurred during login';
+            
+            switch (error.code) {
+                case 'auth/user-not-found':
+                    errorMessage = 'No user found with this email';
+                    break;
+                case 'auth/wrong-password':
+                    errorMessage = 'Invalid password';
+                    break;
+                case 'auth/invalid-email':
+                    errorMessage = 'Invalid email address';
+                    break;
+                case 'auth/too-many-requests':
+                    errorMessage = 'Too many failed login attempts. Please try again later';
+                    break;
+            }
+            
+            Alert.alert('Error', errorMessage);
+            console.error('Login error:', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -28,7 +64,6 @@ const LoginScreen = ({ navigation }) => {
             <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
                 <Image source={require('../assets/Swift.png')} style={styles.logo} />
                 <Text style={styles.title}>Manager Console</Text>
-
                 <View style={styles.inputContainer}>
                     <Text style={styles.inputLabel}>Email</Text>
                     <TextInput
@@ -37,9 +72,9 @@ const LoginScreen = ({ navigation }) => {
                         onChangeText={setEmail}
                         keyboardType="email-address"
                         autoCapitalize="none"
+                        editable={!loading}
                     />
                 </View>
-
                 <View style={styles.inputContainer}>
                     <Text style={styles.inputLabel}>Password</Text>
                     <TextInput
@@ -48,14 +83,21 @@ const LoginScreen = ({ navigation }) => {
                         onChangeText={setPassword}
                         secureTextEntry
                         autoCapitalize="none"
+                        editable={!loading}
                     />
                 </View>
-
-                <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-                    <Text style={styles.loginButtonText}>Login</Text>
+                <TouchableOpacity 
+                    style={[styles.loginButton, loading && styles.loginButtonDisabled]}
+                    onPress={handleLogin}
+                    disabled={loading}
+                >
+                    {loading ? (
+                        <ActivityIndicator color="#ffffff" />
+                    ) : (
+                        <Text style={styles.loginButtonText}>Login</Text>
+                    )}
                 </TouchableOpacity>
-
-                <TouchableOpacity>
+                <TouchableOpacity disabled={loading}>
                     <Text style={styles.forgotPassword}>Forgot Password?</Text>
                 </TouchableOpacity>
             </ScrollView>
@@ -66,7 +108,7 @@ const LoginScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#edf2fb', // Light blue background
+        backgroundColor: '#edf2fb',
     },
     scrollContainer: {
         flexGrow: 1,
@@ -82,7 +124,7 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: '#073b4c', // Dark blue title
+        color: '#073b4c',
         marginBottom: 40,
     },
     inputContainer: {
@@ -91,36 +133,39 @@ const styles = StyleSheet.create({
     },
     inputLabel: {
         fontSize: 16,
-        color: '#073b4c', // Dark blue text for clarity
+        color: '#073b4c',
         marginBottom: 5,
     },
     input: {
         width: '100%',
         height: 50,
         borderWidth: 1,
-        borderColor: '#073b4c', // Border color for consistency
+        borderColor: '#073b4c',
         borderRadius: 8,
         paddingHorizontal: 15,
         fontSize: 16,
-        color: '#073b4c', // Text color for readability
-        backgroundColor: '#ffffff', // White input field
+        color: '#073b4c',
+        backgroundColor: '#ffffff',
     },
     loginButton: {
         width: '100%',
         height: 50,
-        backgroundColor: '#073b4c', // Dark blue button
+        backgroundColor: '#073b4c',
         justifyContent: 'center',
         alignItems: 'center',
         borderRadius: 8,
         marginTop: 10,
     },
+    loginButtonDisabled: {
+        opacity: 0.7,
+    },
     loginButtonText: {
-        color: '#ffffff', // White text on dark button
+        color: '#ffffff',
         fontSize: 18,
         fontWeight: 'bold',
     },
     forgotPassword: {
-        color: '#073b4c', // Dark blue text
+        color: '#073b4c',
         marginTop: 10,
         fontSize: 14,
     },
