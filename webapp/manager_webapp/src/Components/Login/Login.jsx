@@ -53,7 +53,7 @@ const Login = () => {
   return (
     <div className="wrapper">
       <header className="app-header">
-        <h1>SwiftParker Manager App</h1>
+        <h1>SwiftParker Manager</h1>
       </header>
       <form onSubmit={handleSubmit}>
         <h1>Login</h1>

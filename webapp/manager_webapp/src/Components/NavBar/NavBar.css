@@ -1,67 +1,91 @@
 .navbar {
-    background: #0c2649;
-    height: 60px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-  
+  background: #073b4c; 
+  height: 70px; 
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); 
+}
+
+.navbar-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  max-width: 1300px;
+  padding: 0 30px;
+}
+
+.navbar-logo {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.navbar-logo-image {
+  height: 45px; 
+  width: auto;
+  margin-right: 12px;
+}
+
+.navbar-logo-text {
+  color: #ffffff;
+  font-size: 1.5rem;
+  font-weight: bold;
+  font-family: "Roboto", sans-serif; 
+}
+
+.nav-menu {
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+
+.nav-item {
+  margin-left: 25px;
+}
+
+
+.nav-links {
+  color: #ffffff;
+  text-decoration: none;
+  padding: 12px 22px;
+  border-radius: 8px; 
+  font-size: 1rem;
+  font-weight: 500;
+  transition: all 0.3s ease-in-out;
+  font-family: "Roboto", sans-serif;
+}
+
+.nav-links:hover {
+  background-color: #05668d; 
+  transform: scale(1.05);
+}
+
+.logout-button {
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}
+
+.logout-button:hover .nav-links {
+  background-color: #d83232;
+  color: #ffffff;
+  transform: scale(1.05);
+}
+
+@media screen and (max-width: 768px) {
   .navbar-container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    max-width: 1200px;
-    padding: 0 20px;
-  }
-  
-  .navbar-logo {
-    display: flex;
-    align-items: center;
-    text-decoration: none;
-  }
-  
-  .navbar-logo-image {
-    height: 40px;
-    width: auto;
-    margin-right: 10px;
-  }
-  
-  .navbar-logo-text {
-    color: #fff;
-    font-size: 1.3rem;
-    font-weight: bold;
-  }
-  
-  .nav-menu {
-    display: flex;
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-  
-  .nav-item {
-    margin-left: 20px;
+      padding: 0 15px;
   }
   
   .nav-links {
-    color: #fff;
-    text-decoration: none;
-    padding: 10px 20px;
-    border-radius: 4px;
-    transition: background-color 0.3s ease;
+      padding: 10px 15px;
+      font-size: 0.9rem;
   }
   
-  .nav-links:hover {
-    background-color: #82aef0;
+  .navbar-logo-text {
+      font-size: 1.3rem;
   }
-  
-  .logout-button {
-    cursor: pointer;
-  }
-  
-  .logout-button:hover .nav-links {
-    background-color: #d83232;
-    color: #fff;
-  }
-  
+}

@@ -11,6 +11,7 @@ import SpotsManagement from "./Components/Spots/SpotsManagement";
 import Payments from "./Components/Payments/Payments";
 import ParkingLog from "./Components/ParkingLog/ParkingLog";
 import Home from "./Components/Home/Home";
+import ParkingLots from './Components/ParkingLots/ParkingLots';
 import './App.css';
 
 // Protected Route Component
@@ -62,7 +63,7 @@ const AppContent = () => {
         } />
         <Route path="/parking-list" element={
           <ProtectedRoute>
-            <ParkingLot />
+            <ParkingLots />
           </ProtectedRoute>
         } />
         <Route path="/payments" element={
