@@ -2,9 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { Camera, CameraView } from 'expo-camera';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 
 // Function to open the gate with hardcoded QR code and IP address
 const openGate = async (scannedData) => {
+    useEffect(() => {
+        const checkSession = async () => {
+            const session = await AsyncStorage.getItem('userSession');
+            if (!session) {
+                navigation.replace('Login'); // Redirect if no session
+            }
+        };
+        checkSession();
+    }, []);
+
+
     const validQRCode = "abc45678"; // Hardcoded QR code
     const ipAddress = "http://10.0.0.60/openGate?ip=10.0.0.60"; // Hardcoded IP address
 

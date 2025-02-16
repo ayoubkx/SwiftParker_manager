@@ -1,8 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { FontAwesome5 } from '@expo/vector-icons';import AsyncStorage from '@react-native-async-storage/async-storage';
+
 
 const CheckPlatesScreen = ({ navigation }) => {
+    useEffect(() => {
+        const checkSession = async () => {
+            const session = await AsyncStorage.getItem('userSession');
+            if (!session) {
+                navigation.replace('Login'); // Redirect if no session
+            }
+        };
+        checkSession();
+    }, []);
+
     const [licensePlate, setLicensePlate] = useState('');
     const [userData, setUserData] = useState(null);
 

@@ -2,11 +2,22 @@ import React, {useEffect, useState} from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, FlatList } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { Camera, CameraView } from 'expo-camera';
-
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const mockNumbers = Array.from({ length: 10 }, (_, i) => (i + 1).toString()); // Floors, Rows, Spots (1-10)
 
 const AddSensorModuleScreen = ({ navigation }) => {
+
+    useEffect(() => {
+        const checkSession = async () => {
+            const session = await AsyncStorage.getItem('userSession');
+            if (!session) {
+                navigation.replace('Login'); // Redirect if no session
+            }
+        };
+        checkSession();
+    }, []);
+
     const [deviceID, setDeviceID] = useState('');
     const [selectedSensor, setSelectedSensor] = useState(null);
     const [selectedFloor, setSelectedFloor] = useState('');

@@ -2,8 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import {Camera, CameraView} from 'expo-camera';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const AddEntryExitModuleScreen = ({ navigation }) => {
+    useEffect(() => {
+        const checkSession = async () => {
+            const session = await AsyncStorage.getItem('userSession');
+            if (!session) {
+                navigation.replace('Login'); // Redirect if no session
+            }
+        };
+        checkSession();
+    }, []);
+
     const [deviceID, setDeviceID] = useState('');
     const [moduleType, setModuleType] = useState(null);
     const [scanning, setScanning] = useState(false);
@@ -115,6 +126,12 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         paddingHorizontal: 20,
+    },
+    title: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        color: '#073b4c',
+        marginBottom: 20,
     },
     backButton: {
         position: 'absolute',

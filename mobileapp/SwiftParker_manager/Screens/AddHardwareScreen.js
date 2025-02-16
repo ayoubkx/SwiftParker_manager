@@ -1,8 +1,21 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useEffect } from 'react';
 
 const AddHardwareScreen = ({ navigation }) => {
+    useEffect(() => {
+        const checkSession = async () => {
+            const session = await AsyncStorage.getItem('userSession');
+            if (!session) {
+                navigation.replace('Login'); // Redirect if no session
+            }
+        };
+        checkSession();
+    }, []);
+
+
     const handleSelection = (type) => {
         if (type === "entry_exit") {
             navigation.navigate("AddEntryExitModule"); // Correct screen name
