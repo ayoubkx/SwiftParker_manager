@@ -1,3 +1,4 @@
+import API from "./api";
 
 // Fetches all managers from the database and returns them as an array with their IDs
 export const getAllManagers = async () => {

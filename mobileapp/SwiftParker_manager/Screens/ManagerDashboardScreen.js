@@ -75,6 +75,7 @@ const styles = StyleSheet.create({
         color: '#073b4c',
         marginBottom: 30,
         marginTop: 10,
+        marginLeft: 25,
     },
     grid: {
         flexDirection: "column",

@@ -5,8 +5,9 @@ import { Camera, CameraView } from 'expo-camera';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
-// Function to open the gate with hardcoded QR code and IP address
-const openGate = async (scannedData) => {
+
+
+const ScanQRScreen = ({ navigation }) => {
     useEffect(() => {
         const checkSession = async () => {
             const session = await AsyncStorage.getItem('userSession');
@@ -17,36 +18,10 @@ const openGate = async (scannedData) => {
         checkSession();
     }, []);
 
-
-    const validQRCode = "abc45678"; // Hardcoded QR code
-    const ipAddress = "http://10.0.0.60/openGate?ip=10.0.0.60"; // Hardcoded IP address
-
-    if (scannedData === validQRCode) {
-        try {
-            const response = await fetch(ipAddress, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ action: 'open' }),
-            });
-            if (response.ok) {
-                Alert.alert('Success', 'Gate opened successfully!');
-            } else {
-                Alert.alert('Error', `Failed to open the gate: ${response.status}`);
-            }
-        } catch (error) {
-            Alert.alert('Error', `Connection failed: ${error.message}`);
-        }
-    } else {
-        Alert.alert('Invalid QR', 'This QR code is not recognized.');
-    }
-};
-
-const ScanQRScreen = ({ navigation }) => {
     const [hasPermission, setHasPermission] = useState(null);
     const [scanning, setScanning] = useState(false);
     const [scanned, setScanned] = useState(false);
+    const [alertVisible, setAlertVisible] = useState(false);
 
     useEffect(() => {
         (async () => {
@@ -56,9 +31,25 @@ const ScanQRScreen = ({ navigation }) => {
     }, []);
 
     const handleBarCodeScanned = ({ data }) => {
-        if (!scanned) {
+        if (!scanned && !alertVisible) {
             setScanned(true);
-            openGate(data); // Call gate opening function
+            setAlertVisible(true); // Prevent multiple alerts
+
+            // Show a nice alert with detected user ID and confirmation
+            Alert.alert(
+                "QR Code Detected 🚀",
+                `✅ User ID: ${data}\n\n🚪 Gate is opening...`,
+                [
+                    {
+                        text: "OK",
+                        onPress: () => {
+                            setScanned(false);
+                            setAlertVisible(false); // Reset alert visibility on dismiss
+                        },
+                        style: "default"
+                    }
+                ]
+            );
         }
     };
 
