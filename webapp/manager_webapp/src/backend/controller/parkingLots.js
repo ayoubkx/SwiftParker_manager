@@ -2,9 +2,20 @@
 
 // // Parking Lot Management
 
-// // Add a new parking lot for a specific manager. 
-// export const addParkingLot = async (managerId, name, location, hourRate) => {
+// Add a new parking lot for a specific manager. 
+// export const addParkingLot = async (
+//   managerId, 
+//   name, 
+//   location, 
+//   hourlyRateWeekday,
+//   dailyRateWeekday,
+//   hourlyRateWeekend,
+//   dailyRateWeekend,
+//   subscriptionRate,
+//   phoneNumber
+// ) => {
 //   try {
+//     // Get current manager data
 //     const managerResponse = await API.get(`/managers/${managerId}.json`);
 //     const managerData = managerResponse.data;
 
@@ -12,6 +23,7 @@
 //       throw new Error('Manager not found');
 //     }
 
+//     // Get all existing parking lots
 //     const parkingLotsResponse = await API.get('/parkingLots.json');
 //     const parkingLotsData = parkingLotsResponse.data;
 
@@ -24,20 +36,54 @@
 //       }
 //     }
 
+//     // Geocode the location using OpenStreetMap Nominatim API
+//     const geocodingResponse = await fetch(
+//       `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}`
+//     );
+//     const geocodingData = await geocodingResponse.json();
+
+//     if (!geocodingData || geocodingData.length === 0) {
+//       throw new Error('Unable to geocode the provided location');
+//     }
+
+//     // Get the first result and extract coordinates and formatted address
+//     const firstResult = geocodingData[0];
+//     const latitude = parseFloat(firstResult.lat);
+//     const longitude = parseFloat(firstResult.lon);
+//     const formattedLocation = firstResult.display_name;
+
+//     // Create the parking lot with coordinates, formatted address, and rates
 //     const newParkingLot = {
 //       name,
-//       location,
-//       hourRate,
+//       location: formattedLocation, // Use the formatted address from geocoding
+//       latitude,
+//       longitude,
+//       hourlyRateWeekday,
+//       dailyRateWeekday,
+//       hourlyRateWeekend,
+//       dailyRateWeekend,
+//       subscriptionRate,
+//       phoneNumber,
 //       managerId,
 //       floors: [],
-//       createdAt: new Date().toISOString()
+//       createdAt: new Date().toISOString(),
+//       // Initialize available spots structure
+//       availableSpots: {
+//         general: 0,
+//         handicapped: 0,
+//         EV: 0,
+//         subscription: 0
+//       }
 //     };
 
+//     // Add the parking lot to the parkingLots collection
 //     const parkingLotResponse = await API.post('/parkingLots.json', newParkingLot);
 //     const parkingLotId = parkingLotResponse.data.name;
 
+//     // Add the parking lot ID to the manager's parkingLots array
 //     const updatedParkingLots = [...(managerData.parkingLots || []), parkingLotId];
 
+//     // Update the manager's parkingLots array
 //     await API.patch(`/managers/${managerId}.json`, {
 //       parkingLots: updatedParkingLots
 //     });
@@ -83,7 +129,7 @@
 //   }
 // };
 
-// // Get the info of a specific parking lot by its ID.
+// // Get the all the info of a specific parking lot by its ID.
 // export const getParkingLot = async (parkingLotId) => {
 //   try {
 //     const response = await API.get(`/parkingLots/${parkingLotId}.json`);
@@ -98,6 +144,38 @@
 //     };
 //   } catch (error) {
 //     console.error('Error getting parking lot:', error);
+//     throw error;
+//   }
+// };
+
+// //--------------------get the parking lot info needed by the user
+// export const getParkingLotInfo = async (parkingLotId) => {
+//   try {
+//     const parkingLotResponse = await API.get(`/parkingLots/${parkingLotId}.json`);
+//     const parkingLotData = parkingLotResponse.data;
+
+//     if (!parkingLotData) {
+//       throw new Error('Parking lot not found');
+//     }
+
+//     return {
+//       name: parkingLotData.name,
+//       location: parkingLotData.location,
+//       hourlyRateWeekday: parkingLotData.hourlyRateWeekday,
+//       dailyRateWeekday: parkingLotData.dailyRateWeekday,
+//       hourlyRateWeekend: parkingLotData.hourlyRateWeekend,
+//       dailyRateWeekend: parkingLotData.dailyRateWeekend,
+//       subscriptionRate: parkingLotData.subscriptionRate,
+//       phoneNumber: parkingLotData.phoneNumber,
+//       availableSpots: parkingLotData.availableSpots || {
+//         general: 0,
+//         handicapped: 0,
+//         EV: 0,
+//         subscription: 0
+//       }
+//     };
+//   } catch (error) {
+//     console.error('Error getting parking lot information:', error);
 //     throw error;
 //   }
 // };
@@ -386,18 +464,22 @@
 //   try {
 //     const { type, isReserved, deviceId, sensorId } = spotData;
 
+//     // Make sensorId mandatory when deviceId is provided
 //     if (deviceId && (sensorId === undefined || sensorId === null)) {
 //       throw new Error('Sensor ID is required when assigning a device');
 //     }
 
+//     // If deviceId is not provided but sensorId is, throw error
 //     if (!deviceId && sensorId !== undefined) {
 //       throw new Error('Cannot assign a sensor ID without a device');
 //     }
 
+//     // Validate sensorId if provided
 //     if (deviceId && (sensorId !== 0 && sensorId !== 1)) {
 //       throw new Error('Sensor ID must be either 0 or 1');
 //     }
-
+    
+//     // Internal helper function to generate random spot ID
 //     const generateSpotId = (length = 8) => {
 //       const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 //       let result = '';
@@ -407,6 +489,7 @@
 //       return `SPOT-${result}`;
 //     };
 
+//     // Get the current parking lot data
 //     const parkingLotResponse = await API.get(`/parkingLots/${parkingLotId}.json`);
 //     const parkingLotData = parkingLotResponse.data;
 
@@ -416,6 +499,7 @@
 
 //     const managerId = parkingLotData.managerId;
 
+//     // Function to check if spotId is unique within manager's parking lots
 //     const isSpotIdUniqueForManager = async (spotId) => {
 //       const parkingLotsResponse = await API.get('/parkingLots.json');
 //       const parkingLots = parkingLotsResponse.data;
@@ -435,6 +519,7 @@
 //       return true;
 //     };
 
+//     // Generate a unique spot ID
 //     let spotId;
 //     let isUnique = false;
 //     let attempts = 0;
@@ -450,18 +535,19 @@
 //       throw new Error('Failed to generate unique spot ID after multiple attempts');
 //     }
 
+//     // Find the floor
 //     const floor = parkingLotData.floors.find((f) => f.floorId === parseInt(floorId));
-
 //     if (!floor) {
 //       throw new Error('Floor not found');
 //     }
 
+//     // Find the row
 //     const row = floor.rows.find((r) => r.rowId === rowId);
-
 //     if (!row) {
 //       throw new Error('Row not found');
 //     }
 
+//     // If deviceId is provided, validate it and check location constraints
 //     let deviceData;
 //     if (deviceId) {
 //       const deviceResponse = await API.get(`/device/${deviceId}.json`);
@@ -493,8 +579,7 @@
 //       }
 //     }
 
-//     let updatedFloors;
-
+//     // Create new spot
 //     const newSpot = {
 //       spotId,
 //       type,
@@ -503,7 +588,8 @@
 //       ...(deviceId && { deviceId, sensorId })
 //     };
 
-//     updatedFloors = parkingLotData.floors.map((f) =>
+//     // Update floors array
+//     const updatedFloors = parkingLotData.floors.map((f) =>
 //       f.floorId === parseInt(floorId)
 //         ? {
 //             ...f,
@@ -519,26 +605,41 @@
 //         : f
 //     );
 
+//     // Update the parking lot
 //     await API.patch(`/parkingLots/${parkingLotId}.json`, {
 //       floors: updatedFloors
 //     });
 
+//     // If device was provided, update device and availability count
 //     if (deviceId) {
 //       const updatedSpots = deviceData.spots === undefined 
 //         ? [spotId]
 //         : [...deviceData.spots, spotId];
 
+//       // Update device information
 //       await API.patch(`/device/${deviceId}.json`, {
 //         spots: updatedSpots,
 //         parkingLotId,
 //         floorId: parseInt(floorId),
 //         rowId: rowId
 //       });
+
+//       // Update available spots count
+//       const currentAvailability = parkingLotData.availableSpots?.[type] || 0;
+//       const updatedAvailableSpots = {
+//         ...parkingLotData.availableSpots,
+//         [type]: currentAvailability + 1
+//       };
+
+//       await API.patch(`/parkingLots/${parkingLotId}.json`, {
+//         availableSpots: updatedAvailableSpots
+//       });
 //     }
 
 //     return {
 //       success: true,
-//       spotId
+//       spotId,
+//       spot: newSpot
 //     };
 //   } catch (error) {
 //     console.error('Error adding spot:', error);
@@ -1053,8 +1154,7 @@
 //           await API.patch(`/device/${deviceId}.json`, {
 //             spots: updatedSpots
 //           });
-//         }
-//       }
+//         }//       }
   
 //       return {
 //         success: true,
@@ -1071,12 +1171,39 @@
 
 // **********COMMENT THE CODE ABOVE AND UNCOMMENT THE CODE BELOW FOR TESTING IN POSTMAN************
 
+//----------- add a parking lot for an existing manager
 
 import API from '../api.js';
 export const addParkingLot = async (req, res) => {
   try {
-    const { managerId, name, location, hourRate } = req.body;
+    const { 
+      managerId, 
+      name, 
+      location, 
+      hourlyRateWeekday,
+      dailyRateWeekday,
+      hourlyRateWeekend,
+      dailyRateWeekend,
+      subscriptionRate,
+      phoneNumber
+    } = req.body;
 
+    // Validate required fields
+    if (!managerId || !name || !location) {
+      return res.status(400).json({ 
+        error: 'Missing required fields: managerId, name, and location are required' 
+      });
+    }
+
+    // Validate rate fields are numbers if provided
+    const rates = [hourlyRateWeekday, dailyRateWeekday, hourlyRateWeekend, dailyRateWeekend, subscriptionRate];
+    if (rates.some(rate => rate && isNaN(parseFloat(rate)))) {
+      return res.status(400).json({ 
+        error: 'All rate fields must be valid numbers' 
+      });
+    }
+
+    // Get current manager data
     const managerResponse = await API.get(`/managers/${managerId}.json`);
     const managerData = managerResponse.data;
 
@@ -1084,6 +1211,7 @@ export const addParkingLot = async (req, res) => {
       return res.status(404).json({ error: 'Manager not found' });
     }
 
+    // Get all existing parking lots
     const parkingLotsResponse = await API.get('/parkingLots.json');
     const parkingLotsData = parkingLotsResponse.data;
 
@@ -1092,42 +1220,90 @@ export const addParkingLot = async (req, res) => {
         (lot) => lot.name === name && lot.location === location
       );
       if (existingLot) {
-        return res.status(400).json({ error: 'Parking lot with the same name and address already exists' });
+        return res.status(400).json({ 
+          error: 'Parking lot with the same name and address already exists' 
+        });
       }
     }
 
-    const newParkingLot = {
-      name,
-      location,
-      hourRate,
-      managerId,
-      floors: [],
-      createdAt: new Date().toISOString()
-    };
+    try {
+      const geocodingResponse = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}`
+      );
+      const geocodingData = await geocodingResponse.json();
 
-    const parkingLotResponse = await API.post('/parkingLots.json', newParkingLot);
-    const parkingLotId = parkingLotResponse.data.name;
-
-    const updatedParkingLots = [...(managerData.parkingLots || []), parkingLotId];
-
-    await API.patch(`/managers/${managerId}.json`, {
-      parkingLots: updatedParkingLots
-    });
-
-    res.status(201).json({
-      success: true,
-      parkingLotId,
-      parkingLot: {
-        id: parkingLotId,
-        ...newParkingLot
+      if (!geocodingData || geocodingData.length === 0) {
+        return res.status(400).json({ 
+          error: 'Unable to geocode the provided location. Please check the address.' 
+        });
       }
-    });
+
+      const firstResult = geocodingData[0];
+      const latitude = parseFloat(firstResult.lat);
+      const longitude = parseFloat(firstResult.lon);
+      const formattedLocation = firstResult.display_name;
+
+      const newParkingLot = {
+        name,
+        location: formattedLocation,
+        latitude,
+        longitude,
+        hourlyRateWeekday: parseFloat(hourlyRateWeekday) || 0,
+        dailyRateWeekday: parseFloat(dailyRateWeekday) || 0,
+        hourlyRateWeekend: parseFloat(hourlyRateWeekend) || 0,
+        dailyRateWeekend: parseFloat(dailyRateWeekend) || 0,
+        subscriptionRate: parseFloat(subscriptionRate) || 0,
+        phoneNumber,
+        managerId,
+        floors: [],
+        createdAt: new Date().toISOString(),
+        availableSpots: {
+          general: 0,
+          handicapped: 0,
+          EV: 0,
+          subscription: 0
+        }
+      };
+
+      // Add the parking lot to the parkingLots collection
+      const parkingLotResponse = await API.post('/parkingLots.json', newParkingLot);
+      const parkingLotId = parkingLotResponse.data.name;
+
+      // Initialize parkingLots array if it doesn't exist
+      const currentParkingLots = Array.isArray(managerData.parkingLots) 
+        ? managerData.parkingLots 
+        : [];
+
+      // Add the new parking lot ID
+      const updatedParkingLots = [...currentParkingLots, parkingLotId];
+
+      // Update the manager's parkingLots array
+      await API.patch(`/managers/${managerId}.json`, {
+        parkingLots: updatedParkingLots
+      });
+
+      res.status(201).json({
+        success: true,
+        parkingLotId,
+        parkingLot: {
+          id: parkingLotId,
+          ...newParkingLot
+        }
+      });
+
+    } catch (geocodingError) {
+      console.error('Geocoding error:', geocodingError);
+      return res.status(500).json({ 
+        error: 'Failed to geocode location. Please try again later.' 
+      });
+    }
+
   } catch (error) {
     console.error('Error adding parking lot:', error);
     res.status(500).json({ error: 'Failed to add parking lot' });
   }
 };
-
+ // ------------get all the parking lots of a manager
 export const getManagerParkingLots = async (req, res) => {
   try {
     const managerId = req.params.managerId;
@@ -1154,7 +1330,7 @@ export const getManagerParkingLots = async (req, res) => {
     res.status(500).json({ error: 'Failed to get parking lots' });
   }  
 };
-
+//------------Fetch all the info related to a parking lot
 export const getParkingLot = async (req, res) => {
   try {
     const parkingLotId = req.params.parkingLotId;
@@ -1174,6 +1350,46 @@ export const getParkingLot = async (req, res) => {
   }
 };
 
+//------------get the parking lot info needed by the user
+
+export const getParkingLotInfo = async (req, res) => {
+  try {
+    const { parkingLotId } = req.params;
+
+    const parkingLotResponse = await API.get(`/parkingLots/${parkingLotId}.json`);
+    const parkingLotData = parkingLotResponse.data;
+
+    if (!parkingLotData) {
+      return res.status(404).json({ error: 'Parking lot not found' });
+    }
+
+    // Extract the information needed by users
+    const lotInfo = {
+      name: parkingLotData.name,
+      location: parkingLotData.location,
+      hourlyRateWeekday: parkingLotData.hourlyRateWeekday,
+      dailyRateWeekday: parkingLotData.dailyRateWeekday,
+      hourlyRateWeekend: parkingLotData.hourlyRateWeekend,
+      dailyRateWeekend: parkingLotData.dailyRateWeekend,
+      subscriptionRate: parkingLotData.subscriptionRate,
+      phoneNumber: parkingLotData.phoneNumber,
+      availableSpots: parkingLotData.availableSpots || {
+        general: 0,
+        handicapped: 0,
+        EV: 0,
+        subscription: 0
+      }
+    };
+
+    res.status(200).json(lotInfo);
+  } catch (error) {
+    console.error('Error getting parking lot information:', error);
+    res.status(500).json({ error: 'Failed to get parking lot information' });
+  }
+};
+
+
+//----update a manager parking lot
 export const updateParkingLot = async (req, res) => {
   try {
     const parkingLotId = req.params.parkingLotId;
@@ -1202,6 +1418,7 @@ export const updateParkingLot = async (req, res) => {
   }
 };
 
+//-------------delete a parking lot
 export const deleteParkingLot = async (req, res) => {
   try {
     const managerId = req.params.managerId;
@@ -1550,17 +1767,30 @@ export const addSpot = async (req, res) => {
       floors: updatedFloors
     });
 
-    // If device was provided, update the device with spot and location information
+    // If device was provided, update the device and availability count
     if (deviceId) {
       const updatedSpots = deviceData.spots === undefined 
         ? [spotId]
         : [...deviceData.spots, spotId];
 
+      // Update device information
       await API.patch(`/device/${deviceId}.json`, {
         spots: updatedSpots,
         parkingLotId,
         floorId: parseInt(floorId),
         rowId: rowId
+      });
+
+      // Update available spots count only when device is provided
+      const currentAvailability = parkingLotData.availableSpots?.[type] || 0;
+      const updatedAvailableSpots = {
+        ...parkingLotData.availableSpots,
+        [type]: currentAvailability + 1
+      };
+
+      // Update availability count
+      await API.patch(`/parkingLots/${parkingLotId}.json`, {
+        availableSpots: updatedAvailableSpots
       });
     }
 
