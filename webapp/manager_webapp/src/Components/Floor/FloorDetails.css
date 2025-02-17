@@ -36,42 +36,51 @@
   padding: 20px;
 }
 
-.add-row-button {
-  display: block;
-  margin: 20px auto 0; /* Ensures it stays below the rows */
-  padding: 10px 20px;
-  background-color: #4CAF50;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 1rem;
-  transition: background-color 0.3s ease, transform 0.2s ease;
+.floor-actions-container {
+  display: flex;
+  justify-content: center; /* Centers the buttons */
+  gap: 15px; /* Space between buttons */
+  margin-top: 20px;
 }
 
-.add-row-button:hover {
-  background-color: #45a049;
+.floor-add-row-button,
+.floor-delete-button {
+  display: flex;
+  align-items: center; /* Centers text vertically */
+  justify-content: center; /* Centers text horizontally */
+  padding: 12px 24px; /* Increased padding for better fit */
+  min-width: 160px; /* Ensures consistent button size */
+  border: none;
+  border-radius: 5px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  white-space: nowrap; /* Prevents text from breaking */
+}
+
+/* Green "Add Row" button */
+.floor-add-row-button {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.floor-add-row-button:hover {
+  background-color: #2b17e2;
   transform: scale(1.05);
 }
 
-
-.delete-floor-button {
-  display: block;
-  margin: 10px auto 0; /* Ensures correct spacing below rows */
-  padding: 10px 20px;
-  background-color: #d9534f; /* Bootstrap danger red */
+/* Red "Delete Floor" button */
+.floor-delete-button {
+  background-color: #d9534f;
   color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 1rem;
-  transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
-.delete-floor-button:hover {
+.floor-delete-button:hover {
   background-color: #c9302c;
   transform: scale(1.05);
 }
+
 
 /* Confirmation Modal */
 .confirm-delete-modal {

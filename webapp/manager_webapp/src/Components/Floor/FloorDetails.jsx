@@ -127,13 +127,15 @@ const FloorDetails = () => {
         )}
       </div>
 
-      <button className="add-row-button" onClick={handleAddRow} disabled={addingRow}>
-        {addingRow ? "Adding..." : "New Row"}
-      </button>
+      <div className="floor-actions-container">
+        <button className="floor-add-row-button" onClick={handleAddRow} disabled={addingRow}>
+          {addingRow ? "Adding..." : "New Row"}
+        </button>
 
-      <button className="delete-floor-button" onClick={() => setShowConfirmDelete(true)} disabled={deleting}>
-        {deleting ? "Deleting..." : "Delete Floor"}
-      </button>
+        <button className="floor-delete-button" onClick={() => setShowConfirmDelete(true)} disabled={deleting}>
+          {deleting ? "Deleting..." : "Delete Floor"}
+        </button>
+      </div>
 
       {showConfirmDelete && (
         <div className="confirm-delete-modal">
