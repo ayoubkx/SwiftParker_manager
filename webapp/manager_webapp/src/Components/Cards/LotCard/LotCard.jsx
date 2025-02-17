@@ -2,7 +2,7 @@ import React from "react";
 import "./LotCard.css";
 
 const LotCard = ({ lot, onManageLot }) => {
-  const { lotId, name, image, location } = lot;
+  const { id, name, image, location } = lot;
 
   return (
     <div className="lot-card-container">
@@ -20,7 +20,7 @@ const LotCard = ({ lot, onManageLot }) => {
       <div className="lot-card-footer">
         <button
           className="lot-card-button"
-          onClick={() => onManageLot(lotId)}
+          onClick={() => onManageLot(id)}
         >
           Manage Lot
         </button>

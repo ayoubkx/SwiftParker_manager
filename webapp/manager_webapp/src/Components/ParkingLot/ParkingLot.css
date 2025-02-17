@@ -5,12 +5,17 @@
   text-align: left;
   font-family: Arial, sans-serif;
   color: #333;
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 h1 {
   text-align: center;
   margin-bottom: 20px;
   font-size: 2rem;
+  color: #2c3e50;
 }
 
 .parking-lot-table {
@@ -18,6 +23,8 @@ h1 {
   border-collapse: collapse;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   margin-top: 20px;
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .parking-lot-table td {
@@ -25,29 +32,83 @@ h1 {
   border: 1px solid #ccc;
   text-align: left;
   font-size: 1rem;
+  background: #fafafa;
 }
 
 .parking-lot-table td:first-child {
   font-weight: bold;
-  background-color: #f9f9f9;
+  background-color: #ecf0f1;
+}
+
+.parking-lot-table input {
+  width: calc(100% - 10px);
+  padding: 8px;
+  border: 1px solid #bdc3c7;
+  border-radius: 4px;
+  font-size: 1rem;
+  transition: border 0.3s ease;
+}
+
+.parking-lot-table input:focus {
+  border-color: #3277d8;
+  outline: none;
 }
 
 .item-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  background: #f4f4f4;
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.item-row button {
+.add-floor-button, .save-button, .item-row button {
+  padding: 10px 14px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.add-floor-button {
   padding: 6px 12px;
-  background-color: #3277d8;
-  color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
+  font-size: 0.85rem;
+  background-color: #4CAF50 !important; 
+  color: white;
+  margin-top: 5px;
+  display: inline-block;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.add-floor-button:hover {
+  background-color: #3e8e41 !important;
+  transform: translateY(-1px);
+}
+
+.save-button {
+  display: block;
+  margin: 20px auto;
+  background-color: #3277d8;
+  color: white;
+}
+
+.save-button:hover {
+  background-color: #275ea8;
+  transform: translateY(-2px);
+}
+
+.item-row button {
+  background-color: #3277d8;
+  color: white;
   font-size: 0.9rem;
-  transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
 .item-row button:hover {

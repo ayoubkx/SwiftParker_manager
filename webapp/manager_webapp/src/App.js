@@ -56,7 +56,7 @@ const AppContent = () => {
             <CRUD />
           </ProtectedRoute>
         } />
-        <Route path="/parkinglot" element={
+        <Route path="/parkinglot/:lotId" element={
           <ProtectedRoute>
             <ParkingLot />
           </ProtectedRoute>
