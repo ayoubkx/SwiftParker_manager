@@ -44,7 +44,7 @@ const Home = () => {
           <div className="card-footer">
             <button
               className="card-button"
-              onClick={() => navigate("/parkinglot")}
+              onClick={() => navigate("/parking-list")}
             >
               Go to Parking Lot
             </button>
@@ -70,24 +70,6 @@ const Home = () => {
           </div>
         </div>
 
-        {/* Analytics Card */}
-        <div className="card">
-          <div className="card-header bg-gradient-to-r from-purple-500 to-purple-600"></div>
-          <div className="card-body">
-            <h5 className="card-title">Analytics</h5>
-            <p className="card-description">
-              View insights and analytics for system usage, trends, and reports.
-            </p>
-          </div>
-          <div className="card-footer">
-            <button
-              className="card-button"
-              onClick={() => navigate("/analytics")}
-            >
-              Go to Analytics
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );
