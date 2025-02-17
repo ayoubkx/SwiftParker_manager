@@ -78,14 +78,24 @@ const ParkingSelectionScreen = ({ navigation }) => {
     }, []);
 
     // Handle Parking Lot Selection
-    const handleSelect = (parkingLot) => {
-        if (parkingLot && parkingLot.name) {
-            console.log('Selected Parking Lot:', parkingLot.name);
-            navigation.navigate('ManagerDashboard', { parkingLot });
+
+
+    const handleSelect = async (parkingLot) => {
+        if (parkingLot && parkingLot.id) {
+            try {
+                // Save parking lot info in AsyncStorage
+                await AsyncStorage.setItem('selectedParkingLot', JSON.stringify(parkingLot));
+
+                // Navigate to next screen with parking lot info
+                navigation.navigate('ManagerDashboard', { parkingLot });
+            } catch (error) {
+                console.error('Error saving parking lot:', error);
+            }
         } else {
-            console.warn('Attempted to select an invalid parking lot');
+            console.warn('Invalid parking lot selected');
         }
     };
+
 
 
     // Handle Logout

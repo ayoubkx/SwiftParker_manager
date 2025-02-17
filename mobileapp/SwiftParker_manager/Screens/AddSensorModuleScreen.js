@@ -18,6 +18,22 @@ const AddSensorModuleScreen = ({ navigation }) => {
         checkSession();
     }, []);
 
+    const [parkingLot, setParkingLot] = useState(null);
+    useEffect(() => {
+        const fetchParkingLot = async () => {
+            try {
+                const storedData = await AsyncStorage.getItem('selectedParkingLot');
+                if (storedData) {
+                    const parsedData = JSON.parse(storedData);
+                    setParkingLot(parsedData);
+                }
+            } catch (error) {
+                console.error('Error retrieving parking lot:', error);
+            }
+        };
+        fetchParkingLot();
+    }, []);
+
     const [deviceID, setDeviceID] = useState('');
     const [selectedSensor, setSelectedSensor] = useState(null);
     const [selectedFloor, setSelectedFloor] = useState('');
@@ -28,6 +44,9 @@ const AddSensorModuleScreen = ({ navigation }) => {
     const [scanning, setScanning] = useState(false);
     const [hasPermission, setHasPermission] = useState(null);
     const [scanned, setScanned] = useState(false);
+    const [selectedSpotType, setSelectedSpotType] = useState('');
+    const [spotTypeModalVisible, setSpotTypeModalVisible] = useState(false);
+
 
     useEffect(() => {
         (async () => {
@@ -143,6 +162,13 @@ const AddSensorModuleScreen = ({ navigation }) => {
                     <Text style={[styles.sensorText, selectedSensor === "B" && styles.selectedText]}>Sensor B</Text>
                 </TouchableOpacity>
             </View>
+            {/* Spot Type Selection */}
+            <Text style={styles.inputLabel}>Select Spot Type</Text>
+            <TouchableOpacity style={styles.dropdown} onPress={() => setSpotTypeModalVisible(true)}>
+                <Text style={styles.dropdownText}>
+                    {selectedSpotType ? selectedSpotType : "Select Spot Type"}
+                </Text>
+            </TouchableOpacity>
 
             {/* Floor Selection */}
             <TouchableOpacity style={styles.dropdown} onPress={() => handleOpenModal('floor')}>
@@ -178,6 +204,33 @@ const AddSensorModuleScreen = ({ navigation }) => {
                             )}
                         />
                         <TouchableOpacity style={styles.closeModal} onPress={() => setModalVisible(false)}>
+                            <Text style={styles.closeModalText}>Cancel</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+
+            {/* Spot Type Modal */}
+            <Modal visible={spotTypeModalVisible} transparent animationType="slide">
+                <View style={styles.modalContainer}>
+                    <View style={styles.modalContent}>
+                        {["General", "EV", "Handicapped", "Reserved"].map((type) => (
+                            <TouchableOpacity
+                                key={type}
+                                style={styles.modalItem}
+                                onPress={() => {
+                                    setSelectedSpotType(type);
+                                    setSpotTypeModalVisible(false);
+                                }}
+                            >
+                                <Text style={styles.modalItemText}>{type}</Text>
+                            </TouchableOpacity>
+                        ))}
+                        <TouchableOpacity
+                            style={styles.closeModal}
+                            onPress={() => setSpotTypeModalVisible(false)}
+                        >
                             <Text style={styles.closeModalText}>Cancel</Text>
                         </TouchableOpacity>
                     </View>
@@ -328,6 +381,7 @@ const styles = StyleSheet.create({
         width: '100%',
         justifyContent: 'space-between',
     },
+
 
 
 });
