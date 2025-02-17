@@ -1,6 +1,6 @@
 .floor-details-container {
   width: 90%;
-  max-width: 1200px; 
+  max-width: 1200px;
   margin: 40px auto;
   text-align: left;
   font-family: Arial, sans-serif;
@@ -12,21 +12,111 @@
   font-size: 2rem;
   font-weight: 700;
   color: #333;
-  padding: 15px;
-  border-radius: 8px;
   text-align: center;
   margin-bottom: 20px;
 }
 
 .rows-container {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
-  gap: 20px; 
-  margin-top: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
   padding: 20px;
   border: 1px solid #ccc;
   border-radius: 8px;
   background: #f9f9f9;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   text-align: center;
+  justify-content: center;
+}
+
+.no-rows-message {
+  text-align: center;
+  font-size: 1.2rem;
+  color: #777;
+  padding: 20px;
+}
+
+.add-row-button {
+  display: block;
+  margin: 20px auto 0; /* Ensures it stays below the rows */
+  padding: 10px 20px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.add-row-button:hover {
+  background-color: #45a049;
+  transform: scale(1.05);
+}
+
+
+.delete-floor-button {
+  display: block;
+  margin: 10px auto 0; /* Ensures correct spacing below rows */
+  padding: 10px 20px;
+  background-color: #d9534f; /* Bootstrap danger red */
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.delete-floor-button:hover {
+  background-color: #c9302c;
+  transform: scale(1.05);
+}
+
+/* Confirmation Modal */
+.confirm-delete-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  text-align: center;
+  z-index: 1000;
+}
+
+.confirm-delete-modal p {
+  font-size: 1.2rem;
+  margin-bottom: 15px;
+}
+
+.confirm-delete {
+  background-color: #d9534f;
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-right: 10px;
+  transition: background-color 0.3s ease;
+}
+
+.confirm-delete:hover {
+  background-color: #c9302c;
+}
+
+.cancel-delete {
+  background-color: #5a6268;
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.cancel-delete:hover {
+  background-color: #444b51;
 }

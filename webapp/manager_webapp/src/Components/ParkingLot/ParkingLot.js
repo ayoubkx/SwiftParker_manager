@@ -48,9 +48,8 @@ const ParkingLot = () => {
   }, [lotId]);
 
   const handleManageFloor = (floorId) => {
-    navigate(`/floor/${floorId}`);
+    navigate(`/parking-lot/${parkingLot.id}/floor/${floorId}`);
   };
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prevData) => ({ ...prevData, [name]: value }));
