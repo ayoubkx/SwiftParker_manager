@@ -15,7 +15,12 @@ const ParkingLots = () => {
   const [formData, setFormData] = useState({
     name: "",
     location: "",
-    floors: [],
+    hourlyRateWeekday: "",
+    dailyRateWeekday: "",
+    hourlyRateWeekend: "",
+    dailyRateWeekend: "",
+    subscriptionRate: "",
+    phoneNumber: "",
   });
 
   useEffect(() => {
@@ -49,8 +54,7 @@ const ParkingLots = () => {
           })
         );
 
-        const validParkingLots = parkingLotsData.filter((lot) => lot !== null);
-        setParkingLots(validParkingLots);
+        setParkingLots(parkingLotsData.filter((lot) => lot !== null));
       } catch (err) {
         console.error("Error fetching parking lots:", err);
         setError("Failed to fetch parking lots. Please try again later.");
@@ -78,94 +82,82 @@ const ParkingLots = () => {
     });
   };
 
-  const handleAddFloor = () => {
-    setFormData({
-      ...formData,
-      floors: [
-        ...formData.floors,
-        {
-          floorId: formData.floors.length,
-          rows: [],
-        },
-      ],
-    });
-  };
-
-  const handleAddRow = (floorIndex) => {
-    const updatedFloors = [...formData.floors];
-    updatedFloors[floorIndex].rows.push({
-      rowId: `R${updatedFloors[floorIndex].rows.length + 1}`,
-      spots: [],
-    });
-    setFormData({
-      ...formData,
-      floors: updatedFloors,
-    });
-  };
-
-  const handleAddSpot = (floorIndex, rowIndex) => {
-    const updatedFloors = [...formData.floors];
-    updatedFloors[floorIndex].rows[rowIndex].spots.push({
-      spotId: `SPOT-${Math.random().toString(36).substr(2, 8)}`,
-      type: "general",
-      isReserved: false,
-      status: "available",
-    });
-    setFormData({
-      ...formData,
-      floors: updatedFloors,
-    });
-  };
-
-  const { refreshManagerProfile } = useAuth(); // Get refresh function from AuthContext
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Step 1: Add the new parking lot
+      // Step 1: Get latitude and longitude using OpenStreetMap geocoding
+      const geoResponse = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formData.location)}`
+      );
+      const geoData = await geoResponse.json();
+  
+      if (!geoData || geoData.length === 0) {
+        setError("Unable to find location. Please check the address.");
+        return;
+      }
+  
+      const firstResult = geoData[0];
+      const latitude = parseFloat(firstResult.lat);
+      const longitude = parseFloat(firstResult.lon);
+      const formattedLocation = firstResult.display_name;
+  
+      // Step 2: Send the request to add the parking lot
       const response = await API.post("/parkingLots.json", {
         ...formData,
+        location: formattedLocation,
+        latitude,
+        longitude,
         managerId: currentUser.uid,
         createdAt: new Date().toISOString(),
+        availableSpots: { general: 0, handicapped: 0, EV: 0, subscription: 0 },
       });
+  
       const parkingLotId = response.data.name;
   
-      // Step 2: Get the current list of parkingLots from Firebase
+      // Step 3: Update the manager's parking lots list
       const managerResponse = await API.get(`/managers/${currentUser.uid}.json`);
-      const existingParkingLots = managerResponse.data.parkingLots || [];
+      const existingParkingLots = managerResponse.data?.parkingLots || [];
   
-      // Step 3: Update the manager's parkingLots array in Firebase
       await API.patch(`/managers/${currentUser.uid}.json`, {
         parkingLots: [...existingParkingLots, parkingLotId],
       });
   
-      // Step 4: Refresh the manager's profile to ensure we get updated parking lots
-      await refreshManagerProfile();
+      // Step 4: **Fetch fresh data before updating the UI**
+      setTimeout(async () => {
+        const updatedResponse = await API.get(`/managers/${currentUser.uid}/parkingLots.json`);
+        const updatedParkingLotIds = updatedResponse.data || [];
   
-      // Step 5: Fetch updated parking lots again
-      const updatedResponse = await API.get(`/managers/${currentUser.uid}/parkingLots.json`);
-      const updatedParkingLotIds = updatedResponse.data || [];
-      
-      const updatedParkingLots = await Promise.all(
-        updatedParkingLotIds.map(async (id) => {
-          const lotResponse = await API.get(`/parkingLots/${id}.json`);
-          return {
-            id,
-            ...lotResponse.data,
-          };
-        })
-      );
+        const updatedParkingLots = await Promise.all(
+          updatedParkingLotIds.map(async (id) => {
+            const lotResponse = await API.get(`/parkingLots/${id}.json`);
+            return lotResponse.data ? { id, ...lotResponse.data } : null;
+          })
+        );
   
-      // Step 6: Update state
-      setParkingLots(updatedParkingLots);
-      setShowForm(false);
-      setFormData({ name: "", location: "", floors: [] });
+        setParkingLots(updatedParkingLots.filter((lot) => lot !== null));
+        setShowForm(false);
+        setFormData({
+          name: "",
+          location: "",
+          hourlyRateWeekday: "",
+          dailyRateWeekday: "",
+          hourlyRateWeekend: "",
+          dailyRateWeekend: "",
+          subscriptionRate: "",
+          phoneNumber: "",
+        });
+      }, 500); 
   
     } catch (error) {
       console.error("Error adding parking lot:", error);
       setError("Failed to add parking lot. Please try again.");
     }
   };
+  
+  
+
+
 
   if (loading) {
     return <div className="loading-message">Loading parking lots...</div>;
@@ -199,93 +191,43 @@ const ParkingLots = () => {
           <form onSubmit={handleSubmit}>
             <label>
               Name:
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleFormChange}
-                required
-              />
+              <input type="text" name="name" value={formData.name} onChange={handleFormChange} required />
             </label>
             <label>
               Location:
-              <input
-                type="text"
-                name="location"
-                value={formData.location}
-                onChange={handleFormChange}
-                required
-              />
+              <input type="text" name="location" value={formData.location} onChange={handleFormChange} required />
+            </label>
+            <label>
+              Phone Number:
+              <input type="text" name="phoneNumber" value={formData.phoneNumber} onChange={handleFormChange} />
+            </label>
+            <label>
+              Hourly Rate (Weekday):
+              <input type="number" name="hourlyRateWeekday" value={formData.hourlyRateWeekday} onChange={handleFormChange} />
+            </label>
+            <label>
+              Daily Rate (Weekday):
+              <input type="number" name="dailyRateWeekday" value={formData.dailyRateWeekday} onChange={handleFormChange} />
+            </label>
+            <label>
+              Hourly Rate (Weekend):
+              <input type="number" name="hourlyRateWeekend" value={formData.hourlyRateWeekend} onChange={handleFormChange} />
+            </label>
+            <label>
+              Daily Rate (Weekend):
+              <input type="number" name="dailyRateWeekend" value={formData.dailyRateWeekend} onChange={handleFormChange} />
+            </label>
+            <label>
+              Subscription Rate:
+              <input type="number" name="subscriptionRate" value={formData.subscriptionRate} onChange={handleFormChange} />
             </label>
 
-            <h3>Floors</h3>
-            {formData.floors.map((floor, floorIndex) => (
-              <div key={floorIndex} className="floor-section">
-                <h4>Floor {floorIndex + 1}</h4>
-                <button type="button" onClick={() => handleAddRow(floorIndex)}>
-                  Add Row
-                </button>
-
-                {floor.rows.map((row, rowIndex) => (
-                  <div key={rowIndex} className="row-section">
-                    <h5>Row {rowIndex + 1}</h5>
-                    <button type="button" onClick={() => handleAddSpot(floorIndex, rowIndex)}>
-                      Add Spot
-                    </button>
-
-                    {row.spots.map((spot, spotIndex) => (
-                      <div key={spotIndex} className="spot-section">
-                        <h6>Spot {spotIndex + 1}</h6>
-                        <label>
-                          Type:
-                          <select
-                            value={spot.type}
-                            onChange={(e) => {
-                              const updatedFloors = [...formData.floors];
-                              updatedFloors[floorIndex].rows[rowIndex].spots[spotIndex].type =
-                                e.target.value;
-                              setFormData({
-                                ...formData,
-                                floors: updatedFloors,
-                              });
-                            }}
-                          >
-                            <option value="general">General</option>
-                            <option value="handicapped">Handicapped</option>
-                            <option value="EV">EV</option>
-                            <option value="subscription">Subscription</option>
-                          </select>
-                        </label>
-                        <label>
-                          Reserved:
-                          <input
-                            type="checkbox"
-                            checked={spot.isReserved}
-                            onChange={(e) => {
-                              const updatedFloors = [...formData.floors];
-                              updatedFloors[floorIndex].rows[rowIndex].spots[spotIndex].isReserved =
-                                e.target.checked;
-                              setFormData({
-                                ...formData,
-                                floors: updatedFloors,
-                              });
-                            }}
-                          />
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            ))}
-
-            <button type="button" onClick={handleAddFloor}>
-              Add Floor
-            </button>
-            <button type="submit">Submit</button>
-            <button type="button" onClick={() => setShowForm(false)}>
-              Cancel
-            </button>
+            <div className="form-buttons">
+              <button type="submit">Submit</button>
+              <button type="button" onClick={() => setShowForm(false)} className="cancel-button">
+                Cancel
+              </button>
+            </div>
           </form>
         </div>
       )}
