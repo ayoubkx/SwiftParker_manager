@@ -21,6 +21,12 @@ const ParkingLots = () => {
     dailyRateWeekend: "",
     subscriptionRate: "",
     phoneNumber: "",
+    floors: 1,
+    rowsPerFloor: 1,
+    generalSpotsPerRow: 0,
+    handicappedSpotsPerRow: 0,
+    evSpotsPerRow: 0,
+    subscriptionSpotsPerRow: 0,
   });
 
   useEffect(() => {
@@ -82,7 +88,6 @@ const ParkingLots = () => {
     });
   };
 
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -102,20 +107,47 @@ const ParkingLots = () => {
       const longitude = parseFloat(firstResult.lon);
       const formattedLocation = firstResult.display_name;
   
-      // Step 2: Send the request to add the parking lot
+      // Step 2: Create parking lot structure
+      const createSpots = (type, count) => Array.from({ length: count }, (_, index) => ({
+        spotId: `SPOT-${type}-${index}`,
+        type,
+        isReserved: false,
+        status: "available",
+      }));
+  
+      const parkingLotStructure = Array.from({ length: formData.floors }, (_, floorIndex) => ({
+        floorId: floorIndex,
+        rows: Array.from({ length: formData.rowsPerFloor }, (_, rowIndex) => ({
+          rowId: `R${floorIndex}${rowIndex}`,
+          spots: [
+            ...createSpots("general", formData.generalSpotsPerRow),
+            ...createSpots("handicapped", formData.handicappedSpotsPerRow),
+            ...createSpots("EV", formData.evSpotsPerRow),
+            ...createSpots("subscription", formData.subscriptionSpotsPerRow),
+          ],
+        })),
+      }));
+  
+      // Step 3: Send the request to add the parking lot
       const response = await API.post("/parkingLots.json", {
-        ...formData,
+        name: formData.name,
         location: formattedLocation,
         latitude,
         longitude,
         managerId: currentUser.uid,
         createdAt: new Date().toISOString(),
-        availableSpots: { general: 0, handicapped: 0, EV: 0, subscription: 0 },
+        floors: parkingLotStructure,
+        hourlyRateWeekday: formData.hourlyRateWeekday,
+        dailyRateWeekday: formData.dailyRateWeekday,
+        hourlyRateWeekend: formData.hourlyRateWeekend,
+        dailyRateWeekend: formData.dailyRateWeekend,
+        subscriptionRate: formData.subscriptionRate,
+        phoneNumber: formData.phoneNumber,
       });
   
       const parkingLotId = response.data.name;
   
-      // Step 3: Update the manager's parking lots list
+      // Step 4: Update the manager's parking lots list
       const managerResponse = await API.get(`/managers/${currentUser.uid}.json`);
       const existingParkingLots = managerResponse.data?.parkingLots || [];
   
@@ -123,7 +155,7 @@ const ParkingLots = () => {
         parkingLots: [...existingParkingLots, parkingLotId],
       });
   
-      // Step 4: **Fetch fresh data before updating the UI**
+      // Step 5: Fetch fresh data before updating the UI
       setTimeout(async () => {
         const updatedResponse = await API.get(`/managers/${currentUser.uid}/parkingLots.json`);
         const updatedParkingLotIds = updatedResponse.data || [];
@@ -146,6 +178,12 @@ const ParkingLots = () => {
           dailyRateWeekend: "",
           subscriptionRate: "",
           phoneNumber: "",
+          floors: 1,
+          rowsPerFloor: 1,
+          generalSpotsPerRow: 0,
+          handicappedSpotsPerRow: 0,
+          evSpotsPerRow: 0,
+          subscriptionSpotsPerRow: 0,
         });
       }, 500); 
   
@@ -154,10 +192,6 @@ const ParkingLots = () => {
       setError("Failed to add parking lot. Please try again.");
     }
   };
-  
-  
-
-
 
   if (loading) {
     return <div className="loading-message">Loading parking lots...</div>;
@@ -220,6 +254,30 @@ const ParkingLots = () => {
             <label>
               Subscription Rate:
               <input type="number" name="subscriptionRate" value={formData.subscriptionRate} onChange={handleFormChange} />
+            </label>
+            <label>
+              Floors:
+              <input type="number" name="floors" value={formData.floors} onChange={handleFormChange} min="1" required />
+            </label>
+            <label>
+              Rows per Floor:
+              <input type="number" name="rowsPerFloor" value={formData.rowsPerFloor} onChange={handleFormChange} min="1" required />
+            </label>
+            <label>
+              General Spots per Row:
+              <input type="number" name="generalSpotsPerRow" value={formData.generalSpotsPerRow} onChange={handleFormChange} min="0" required />
+            </label>
+            <label>
+              Handicapped Spots per Row:
+              <input type="number" name="handicappedSpotsPerRow" value={formData.handicappedSpotsPerRow} onChange={handleFormChange} min="0" required />
+            </label>
+            <label>
+              EV Spots per Row:
+              <input type="number" name="evSpotsPerRow" value={formData.evSpotsPerRow} onChange={handleFormChange} min="0" required />
+            </label>
+            <label>
+              Subscription Spots per Row:
+              <input type="number" name="subscriptionSpotsPerRow" value={formData.subscriptionSpotsPerRow} onChange={handleFormChange} min="0" required />
             </label>
 
             <div className="form-buttons">
