@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import { FontAwesome5 } from '@expo/vector-icons';import AsyncStorage from '@react-native-async-storage/async-storage';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { FontAwesome5 } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// 👉 Import the backend function here
+import { getUserByLicensePlate } from '../backend/userManagement'; // Adjust path as needed
 
 const CheckPlatesScreen = ({ navigation }) => {
     useEffect(() => {
         const checkSession = async () => {
             const session = await AsyncStorage.getItem('userSession');
             if (!session) {
-                navigation.replace('Login'); // Redirect if no session
+                navigation.replace('Login');
             }
         };
         checkSession();
@@ -17,18 +20,46 @@ const CheckPlatesScreen = ({ navigation }) => {
     const [licensePlate, setLicensePlate] = useState('');
     const [userData, setUserData] = useState(null);
 
-    const handleSearch = () => {
-        console.log(`Searching for License Plate: ${licensePlate}`);
+    const handleSearch = async () => {
+        if (!licensePlate) {
+            Alert.alert('Input Error', 'Please enter a license plate.');
+            return;
+        }
 
-        // Placeholder data (Later, fetch from backend)
-        const dummyData = {
-            name: 'jimmy fallon',
-            phone: '+1 514 449 6978',
-            email: 'jfallon@gmail.com',
-            subscription: 'subscribed',
-        };
+        try {
+            // Retrieve the selected parking lot from AsyncStorage (assuming it's stored there)
+            const storedLot = await AsyncStorage.getItem('selectedParkingLot');
+            const parkingLot = storedLot ? JSON.parse(storedLot) : null;
 
-        setUserData(dummyData);
+            if (!parkingLot || !parkingLot.id) {
+                Alert.alert('Error', 'No parking lot selected.');
+                return;
+            }
+
+            console.log(`Searching for License Plate: ${licensePlate} in lot ${parkingLot.id}`);
+
+            const user = await getUserByLicensePlate(licensePlate, parkingLot.id);
+
+            if (!user) {
+                Alert.alert('Not Found', `No user found with license plate ${licensePlate}`);
+                setUserData(null);
+                return;
+            }
+
+            // Prepare user data for display
+            const displayData = {
+                name: user.fullName || 'Unknown',
+                phone: user.phoneNumber || 'Unknown',
+                email: user.email || 'Unknown',
+                subscription: user.isSubscribed ? 'Subscribed' : 'Not Subscribed',
+            };
+
+            setUserData(displayData);
+
+        } catch (error) {
+            console.error('Error during search:', error);
+            Alert.alert('Error', 'Failed to fetch user data');
+        }
     };
 
     return (
@@ -61,7 +92,7 @@ const CheckPlatesScreen = ({ navigation }) => {
                     <Text style={styles.resultText}>👤 Name: {userData.name}</Text>
                     <Text style={styles.resultText}>📞 Phone: {userData.phone}</Text>
                     <Text style={styles.resultText}>✉️ Email: {userData.email}</Text>
-                    <Text style={styles.resultText}>🚗 Vehicle: {userData.subscription}</Text>
+                    <Text style={styles.resultText}>🚗 Subscription: {userData.subscription}</Text>
                 </View>
             )}
         </View>
