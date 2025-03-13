@@ -110,10 +110,24 @@ const ParkingLot = () => {
     }
   };
 
+  const handleDeleteParkingLot = async () => {
+    if (window.confirm("Are you sure you want to delete this parking lot?")) {
+      try {
+        await API.delete(`/parkingLots/${parkingLot.id}.json`);
+        alert("Parking lot deleted successfully!");
+        navigate("/parking-list"); 
+      } catch (error) {
+        console.error("Error deleting parking lot:", error);
+        setError("Failed to delete parking lot.");
+      }
+    }
+  };
+
   const calculateTotalSpots = (type) => {
     return formData.floors.reduce((total, floor) => {
       if (!Array.isArray(floor.rows)) return total;
       return total + floor.rows.reduce((rowTotal, row) => {
+        if (!Array.isArray(row.spots)) return rowTotal;
         return rowTotal + row.spots.filter(spot => spot.type === type && spot.status === "available").length;
       }, 0);
     }, 0);
@@ -192,7 +206,10 @@ const ParkingLot = () => {
           </tr>
         </tbody>
       </table>
-      <button className="save-button" onClick={handleSaveChanges}>Save Changes</button>
+      <div className="button-container">
+        <button className="save-button" onClick={handleSaveChanges}>Save Changes</button>
+        <button className="delete-button" onClick={handleDeleteParkingLot}>Delete Parking Lot</button>
+      </div>
     </div>
   );
 };
