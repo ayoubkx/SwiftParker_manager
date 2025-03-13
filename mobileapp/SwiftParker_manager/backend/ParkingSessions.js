@@ -76,18 +76,29 @@ export const getOngoingParkingSession = async (userId) => {
  //Calculate parking fee based on duration, weekend, and rates.
 
 export const calculateParkingFee = (durationMinutes, isWeekend, parkingLot) => {
+
+    console.log("Raw parkingLot object:", parkingLot);
+
+
     const hourlyRate = isWeekend
-        ? parkingLot?.hourlyRateWeekend ?? 0
-        : parkingLot?.hourlyRateWeekday ?? 0;
+        ? Number(parkingLot.hourlyRateWeekend)
+        : Number(parkingLot.hourlyRateWeekday);
 
     const dailyRate = isWeekend
-        ? parkingLot?.dailyRateWeekend ?? 0
-        : parkingLot?.dailyRateWeekday ?? 0;
+        ? Number(parkingLot.dailyRateWeekend)
+        : Number(parkingLot.dailyRateWeekday);
 
-    console.log("Rates:", { hourlyRate, dailyRate });
+    console.log("Rates used:", { hourlyRate, dailyRate });
 
+    // ✅ Make sure the rates are valid numbers
+    if (isNaN(hourlyRate) || isNaN(dailyRate)) {
+        console.error("Invalid rates detected!", { hourlyRate, dailyRate });
+        return 0;  // Fallback if your data is corrupted or missing
+    }
+
+    // ✅ Calculate the fee
     if (durationMinutes <= 60) {
-        return hourlyRate; // Charge minimum one hour
+        return hourlyRate; // Minimum one hour
     }
 
     if (durationMinutes <= 360) {
@@ -95,7 +106,7 @@ export const calculateParkingFee = (durationMinutes, isWeekend, parkingLot) => {
         return hours * hourlyRate;
     }
 
-    return dailyRate; // Over 6 hours, daily rate applies
+    return dailyRate; // Over 6 hours, charge daily rate
 };
 
 
@@ -141,33 +152,53 @@ export const getOngoingParkingSessionByLotAndUser = async (userId, parkingLotId)
 
  // Finalize the parking session for a user in a parking lot.
 
-export const finalizeParkingSession = async (userId, parkingLot) => {
+export const finalizeParkingSession = async (userId, parkingLotId) => {
     try {
-        const ongoingSession = await getOngoingParkingSessionByLotAndUser(userId, parkingLot.id);
+        // 1. Get the ongoing session for this user and parking lot
+        const ongoingSession = await getOngoingParkingSessionByLotAndUser(userId, parkingLotId);
 
         if (!ongoingSession) {
-            throw new Error('No ongoing parking session found');
+            throw new Error('No ongoing parking session found for this user in this parking lot');
         }
 
         const sessionId = ongoingSession.sessionId;
         const sessionData = ongoingSession;
 
+        // 2. Get full parking lot object (including rates)
+        const parkingLotResponse = await API.get(`/parkingLots/${parkingLotId}.json`);
+        const parkingLot = parkingLotResponse.data;
+
+        if (!parkingLot) {
+            throw new Error('Parking lot data not found');
+        }
+
+        console.log("Full parkingLot object:", parkingLot);
+
+        // 3. Calculate the duration
         const entryTime = new Date(sessionData.entryTime);
         const exitTime = new Date();
         const durationMs = exitTime - entryTime;
         const durationMinutes = Math.ceil(durationMs / (1000 * 60));
 
-        console.log("Duration:", durationMinutes, "minutes");
+        console.log("Parking duration:", durationMinutes, "minutes");
 
+        // 4. Calculate charges if user is not subscribed
         let amountCharged = 0;
-        let paymentStatus = 'paid';
+        let paymentStatus = 'paid'; // or 'pending' if you process payment later
 
         if (!sessionData.isSubscribed) {
             const isWeekend = exitTime.getDay() === 0 || exitTime.getDay() === 6;
+
             amountCharged = calculateParkingFee(durationMinutes, isWeekend, parkingLot);
-            paymentStatus = 'pending'; // Or 'paid' if auto payment is implemented
+
+            if (isNaN(amountCharged)) {
+                throw new Error('Calculated amountCharged is NaN - check parkingLot rates!');
+            }
+
+            paymentStatus = 'pending'; // Mark as pending payment for non-subscribers
         }
 
+        // 5. Prepare and patch the updated session
         const updatedSession = {
             ...sessionData,
             exitTime: exitTime.toISOString(),
@@ -178,10 +209,12 @@ export const finalizeParkingSession = async (userId, parkingLot) => {
 
         await API.patch(`/parkingSessions/${sessionId}.json`, updatedSession);
 
-        console.log('Session finalized:', updatedSession);
+        console.log('✅ Session finalized:', updatedSession);
+
         return updatedSession;
+
     } catch (error) {
-        console.error('Error finalizing parking session:', error);
+        console.error('❌ Error finalizing parking session:', error.message);
         throw error;
     }
 };

@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { Camera, CameraView } from 'expo-camera';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {checkUserSubscription} from "../backend/userManagement";
-import { createParkingSession, getOngoingParkingSessionByLotAndUser, getOngoingParkingSession , finalizeParkingSession } from "../backend/ParkingSessions";
+import { createParkingSession, getOngoingParkingSessionByLotAndUser, getOngoingParkingSession , finalizeParkingSession , calculateParkingFee } from "../backend/ParkingSessions";
 
 
 const ScanQRScreen = ({ navigation }) => {
@@ -15,6 +15,7 @@ const ScanQRScreen = ({ navigation }) => {
     const [scanned, setScanned] = useState(false);
     const [scanType, setScanType] = useState(null);
     const [alertVisible, setAlertVisible] = useState(false);
+    const isProcessingRef = useRef(false);
 
 
     useEffect(() => {
@@ -47,6 +48,7 @@ const ScanQRScreen = ({ navigation }) => {
 
             if (existingSession) {
                 showAlertOnce('🚫 Duplicate Entry', 'User already has an ongoing session!');
+                stopScan();
                 return;
             }
 
@@ -56,23 +58,27 @@ const ScanQRScreen = ({ navigation }) => {
             if (createResult.success) {
                 const actionMessage = `Opening gate for entry...\n✅ User  ${isSubscribed ? 'is subscribed' : 'is a visitor'}.`;
                 showAlertOnce('✅ Entry Granted', actionMessage);
+                stopScan();
             } else {
                 showAlertOnce('❌ Error', 'Failed to create parking session.');
+                stopScan();
             }
 
         } catch (error) {
             console.error('Error handling entry:', error);
             showAlertOnce('Error', 'Could not process entry scan.');
+            stopScan();
         }
     };
 
 
     const handleExitScan = async (userId, parkingLot) => {
         try {
-            const ongoingSession = await getOngoingParkingSessionByLotAndUser(userId, parkingLot.id);
+            const ongoingSession = await getOngoingParkingSessionByLotAndUser(userId, parkingLot);
 
             if (!ongoingSession) {
                 showAlertOnce('🚫 No Active Session', 'This user has no ongoing parking session.');
+                stopScan();
                 return;
             }
 
@@ -86,17 +92,21 @@ const ScanQRScreen = ({ navigation }) => {
         `;
 
             showAlertOnce('✅ Exit Complete', message);
+            stopScan();
 
         } catch (error) {
             console.error('Error handling exit:', error);
             showAlertOnce('Error', 'Could not process exit scan.');
+            stopScan();
         }
     };
 
     const handleBarCodeScanned = async ({ data }) => {
-        if (scanned || alertVisible) return; // Prevent multiple alerts
-        setScanned(true);
-        setAlertVisible(true);
+        if (isProcessingRef.current) {
+            return;
+        }
+
+        isProcessingRef.current = true;
 
         try {
             const scannedUserId = data.trim();
@@ -105,6 +115,7 @@ const ScanQRScreen = ({ navigation }) => {
             const storedParkingLot = await AsyncStorage.getItem('selectedParkingLot');
             if (!storedParkingLot) {
                 showAlertOnce('Error', 'No parking lot selected.');
+                stopScan();
                 return;
             }
 
@@ -116,6 +127,7 @@ const ScanQRScreen = ({ navigation }) => {
 
             if (!result.exists) {
                 showAlertOnce('❌ User Not Found', `No user found with ID: ${scannedUserId}`);
+                stopScan();
                 return;
             }
 
@@ -123,13 +135,14 @@ const ScanQRScreen = ({ navigation }) => {
                 await handleEntryScan(scannedUserId, parkingLotId, result.isSubscribed);
                 stopScan();
             } else if (scanType === 'Exit') {
-                await handleExitScan(scannedUserId, parkingLot);
+                await handleExitScan(scannedUserId, parkingLotId);
                 stopScan();
             }
 
         } catch (error) {
             console.error('Error during QR scan processing:', error);
             showAlertOnce('Error', 'An unexpected error occurred.');
+            stopScan();
         }
     };
 
@@ -141,7 +154,10 @@ const ScanQRScreen = ({ navigation }) => {
         Alert.alert(title, message, [
             {
                 text: 'OK',
-                onPress: resetScanner,
+                onPress: () => {
+                    isProcessingRef.current = false; // ✅ Allow scanning again
+                    stopScan(); // You can keep this or not depending on UX
+                },
                 style: 'default'
             }
         ]);
@@ -169,12 +185,20 @@ const ScanQRScreen = ({ navigation }) => {
             <Text style={styles.title}>Select Scan Type</Text>
 
             <View style={styles.grid}>
-                <TouchableOpacity style={styles.option} onPress={() => startScan('Entry')}>
+                <TouchableOpacity
+                    style={[styles.option, scanning && styles.disabledOption]}
+                    onPress={() => !scanning && startScan('Entry')}
+                    disabled={scanning}
+                >
                     <FontAwesome5 name="sign-in-alt" size={50} color="#073b4c" />
                     <Text style={styles.optionText}>Scan for Entry</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.option} onPress={() => startScan('Exit')}>
+                <TouchableOpacity
+                    style={[styles.option, scanning && styles.disabledOption]}
+                    onPress={() => !scanning && startScan('Exit')}
+                    disabled={scanning}
+                >
                     <FontAwesome5 name="sign-out-alt" size={50} color="#073b4c" />
                     <Text style={styles.optionText}>Scan for Exit</Text>
                 </TouchableOpacity>
@@ -199,7 +223,10 @@ const styles = StyleSheet.create({
     grid: { flexDirection: 'row', justifyContent: 'center', width: '100%' },
     option: { width: 140, height: 140, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', borderRadius: 10, margin: 15, shadowColor: '#000', shadowOpacity: 0.1, shadowOffset: { width: 0, height: 2 }, shadowRadius: 4, elevation: 3 },
     optionText: { fontSize: 16, color: '#073b4c', marginTop: 10, textAlign: 'center', fontWeight: 'bold' },
-    camera: { width: '90%', height: '50%' }
+    camera: { width: '90%', height: '50%' },
+    disabledOption: {
+        opacity: 0.5
+    }
 });
 
 export default ScanQRScreen;
