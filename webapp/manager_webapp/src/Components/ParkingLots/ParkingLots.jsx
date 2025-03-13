@@ -21,12 +21,8 @@ const ParkingLots = () => {
     dailyRateWeekend: "",
     subscriptionRate: "",
     phoneNumber: "",
-    floors: 1,
-    rowsPerFloor: 1,
-    generalSpotsPerRow: 0,
-    handicappedSpotsPerRow: 0,
-    evSpotsPerRow: 0,
-    subscriptionSpotsPerRow: 0,
+    floors: 0,
+    floorData: [],
   });
 
   useEffect(() => {
@@ -86,6 +82,49 @@ const ParkingLots = () => {
       ...formData,
       [name]: value,
     });
+
+    if (name === "floors") {
+      const updatedFloorData = Array.from({ length: value }, (_, index) => ({
+        rowsPerFloor: 0,
+        rowData: [],
+      }));
+      setFormData({
+        ...formData,
+        floors: value,
+        floorData: updatedFloorData,
+      });
+    }
+  };
+
+  const handleFloorChange = (index, e) => {
+    const { name, value } = e.target;
+    const updatedFloorData = [...formData.floorData];
+    updatedFloorData[index][name] = value;
+
+    if (name === "rowsPerFloor") {
+      const updatedRowData = Array.from({ length: value }, () => ({
+        generalSpotsPerRow: 0,
+        handicappedSpotsPerRow: 0,
+        evSpotsPerRow: 0,
+        subscriptionSpotsPerRow: 0,
+      }));
+      updatedFloorData[index].rowData = updatedRowData;
+    }
+
+    setFormData({
+      ...formData,
+      floorData: updatedFloorData,
+    });
+  };
+
+  const handleRowChange = (floorIndex, rowIndex, e) => {
+    const { name, value } = e.target;
+    const updatedFloorData = [...formData.floorData];
+    updatedFloorData[floorIndex].rowData[rowIndex][name] = value;
+    setFormData({
+      ...formData,
+      floorData: updatedFloorData,
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -115,15 +154,15 @@ const ParkingLots = () => {
         status: "available",
       }));
   
-      const parkingLotStructure = Array.from({ length: formData.floors }, (_, floorIndex) => ({
+      const parkingLotStructure = formData.floorData.map((floor, floorIndex) => ({
         floorId: floorIndex,
-        rows: Array.from({ length: formData.rowsPerFloor }, (_, rowIndex) => ({
+        rows: floor.rowData.map((row, rowIndex) => ({
           rowId: `R${floorIndex}${rowIndex}`,
           spots: [
-            ...createSpots("general", formData.generalSpotsPerRow),
-            ...createSpots("handicapped", formData.handicappedSpotsPerRow),
-            ...createSpots("EV", formData.evSpotsPerRow),
-            ...createSpots("subscription", formData.subscriptionSpotsPerRow),
+            ...createSpots("general", row.generalSpotsPerRow),
+            ...createSpots("handicapped", row.handicappedSpotsPerRow),
+            ...createSpots("EV", row.evSpotsPerRow),
+            ...createSpots("subscription", row.subscriptionSpotsPerRow),
           ],
         })),
       }));
@@ -178,12 +217,8 @@ const ParkingLots = () => {
           dailyRateWeekend: "",
           subscriptionRate: "",
           phoneNumber: "",
-          floors: 1,
-          rowsPerFloor: 1,
-          generalSpotsPerRow: 0,
-          handicappedSpotsPerRow: 0,
-          evSpotsPerRow: 0,
-          subscriptionSpotsPerRow: 0,
+          floors: 0,
+          floorData: [],
         });
       }, 500); 
   
@@ -257,29 +292,73 @@ const ParkingLots = () => {
             </label>
             <label>
               Floors:
-              <input type="number" name="floors" value={formData.floors} onChange={handleFormChange} min="1" required />
+              <input type="number" name="floors" value={formData.floors} onChange={handleFormChange} min="0" required />
             </label>
-            <label>
-              Rows per Floor:
-              <input type="number" name="rowsPerFloor" value={formData.rowsPerFloor} onChange={handleFormChange} min="1" required />
-            </label>
-            <label>
-              General Spots per Row:
-              <input type="number" name="generalSpotsPerRow" value={formData.generalSpotsPerRow} onChange={handleFormChange} min="0" required />
-            </label>
-            <label>
-              Handicapped Spots per Row:
-              <input type="number" name="handicappedSpotsPerRow" value={formData.handicappedSpotsPerRow} onChange={handleFormChange} min="0" required />
-            </label>
-            <label>
-              EV Spots per Row:
-              <input type="number" name="evSpotsPerRow" value={formData.evSpotsPerRow} onChange={handleFormChange} min="0" required />
-            </label>
-            <label>
-              Subscription Spots per Row:
-              <input type="number" name="subscriptionSpotsPerRow" value={formData.subscriptionSpotsPerRow} onChange={handleFormChange} min="0" required />
-            </label>
-
+            {formData.floorData.map((floor, floorIndex) => (
+              <div key={floorIndex} className="floor-section">
+                <h3><strong>Floor {floorIndex + 1}</strong></h3>
+                <label>
+                  Rows per Floor:
+                  <input
+                    type="number"
+                    name="rowsPerFloor"
+                    value={floor.rowsPerFloor}
+                    onChange={(e) => handleFloorChange(floorIndex, e)}
+                    min="0"
+                    required
+                  />
+                </label>
+                {floor.rowData.map((row, rowIndex) => (
+                  <div key={rowIndex} className="row-section">
+                    <h4><strong>Row {rowIndex + 1}</strong></h4>
+                    <label>
+                      General Spots per Row:
+                      <input
+                        type="number"
+                        name="generalSpotsPerRow"
+                        value={row.generalSpotsPerRow}
+                        onChange={(e) => handleRowChange(floorIndex, rowIndex, e)}
+                        min="0"
+                        required
+                      />
+                    </label>
+                    <label>
+                      Handicapped Spots per Row:
+                      <input
+                        type="number"
+                        name="handicappedSpotsPerRow"
+                        value={row.handicappedSpotsPerRow}
+                        onChange={(e) => handleRowChange(floorIndex, rowIndex, e)}
+                        min="0"
+                        required
+                      />
+                    </label>
+                    <label>
+                      EV Spots per Row:
+                      <input
+                        type="number"
+                        name="evSpotsPerRow"
+                        value={row.evSpotsPerRow}
+                        onChange={(e) => handleRowChange(floorIndex, rowIndex, e)}
+                        min="0"
+                        required
+                      />
+                    </label>
+                    <label>
+                      Subscription Spots per Row:
+                      <input
+                        type="number"
+                        name="subscriptionSpotsPerRow"
+                        value={row.subscriptionSpotsPerRow}
+                        onChange={(e) => handleRowChange(floorIndex, rowIndex, e)}
+                        min="0"
+                        required
+                      />
+                    </label>
+                  </div>
+                ))}
+              </div>
+            ))}
             <div className="form-buttons">
               <button type="submit">Submit</button>
               <button type="button" onClick={() => setShowForm(false)} className="cancel-button">
