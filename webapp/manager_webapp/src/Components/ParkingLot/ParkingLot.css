@@ -1,6 +1,6 @@
 .parking-lot-container {
   width: 90%;
-  max-width: 800px;
+  max-width: 1000px;
   margin: 40px auto;
   text-align: left;
   font-family: Arial, sans-serif;
@@ -38,6 +38,7 @@ h1 {
 .parking-lot-table td:first-child {
   font-weight: bold;
   background-color: #ecf0f1;
+  width: 30%; 
 }
 
 .parking-lot-table input {
@@ -114,4 +115,10 @@ h1 {
 .item-row button:hover {
   background-color: #275ea8;
   transform: scale(1.05);
+}
+
+.parking-lot-table label {
+  display: block;
+  margin-bottom: 5px;
+  user-select: none; 
 }

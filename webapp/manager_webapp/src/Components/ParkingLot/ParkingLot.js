@@ -64,14 +64,6 @@ const ParkingLot = () => {
     setFormData((prevData) => ({ ...prevData, [name]: value }));
   };
 
-  const handleSpotChange = (e, type) => {
-    const value = parseInt(e.target.value) || 0;
-    setFormData((prevData) => ({
-      ...prevData,
-      availableSpots: { ...prevData.availableSpots, [type]: value },
-    }));
-  };
-
   const handleAddFloor = () => {
     const newFloorId = formData.floors.length;
     setFormData((prevData) => ({
@@ -97,6 +89,15 @@ const ParkingLot = () => {
       console.error("Error updating parking lot:", error);
       setError("Failed to update parking lot.");
     }
+  };
+
+  const calculateTotalSpots = (type) => {
+    return formData.floors.reduce((total, floor) => {
+      if (!Array.isArray(floor.rows)) return total;
+      return total + floor.rows.reduce((rowTotal, row) => {
+        return rowTotal + row.spots.filter(spot => spot.type === type && spot.status === "available").length;
+      }, 0);
+    }, 0);
   };
 
   if (loading) return <div className="loading-message">Loading parking lot details...</div>;
@@ -148,10 +149,10 @@ const ParkingLot = () => {
           <tr>
             <td>Available Spots</td>
             <td>
-              <label>General: <input type="number" value={formData.availableSpots.general} onChange={(e) => handleSpotChange(e, "general")} /></label>
-              <label>EV: <input type="number" value={formData.availableSpots.EV} onChange={(e) => handleSpotChange(e, "EV")} /></label>
-              <label>Handicapped: <input type="number" value={formData.availableSpots.handicapped} onChange={(e) => handleSpotChange(e, "handicapped")} /></label>
-              <label>Subscription: <input type="number" value={formData.availableSpots.subscription} onChange={(e) => handleSpotChange(e, "subscription")} /></label>
+              <div>Total General Spots: {calculateTotalSpots("general")}</div>
+              <div>Total EV Spots: {calculateTotalSpots("EV")}</div>
+              <div>Total Handicapped Spots: {calculateTotalSpots("handicapped")}</div>
+              <div>Total Subscription Spots: {calculateTotalSpots("subscription")}</div>
             </td>
           </tr>
           <tr>
