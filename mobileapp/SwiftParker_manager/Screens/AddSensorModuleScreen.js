@@ -3,8 +3,9 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, FlatList } 
 import { FontAwesome5 } from '@expo/vector-icons';
 import { Camera, CameraView } from 'expo-camera';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {getFloors , getFloorSpots, getFloorRows, getRowSpots} from "../backend/apiFunction";
 
-const mockNumbers = Array.from({ length: 10 }, (_, i) => (i + 1).toString()); // Floors, Rows, Spots (1-10)
+
 
 const AddSensorModuleScreen = ({ navigation }) => {
 
@@ -46,6 +47,8 @@ const AddSensorModuleScreen = ({ navigation }) => {
     const [scanned, setScanned] = useState(false);
     const [selectedSpotType, setSelectedSpotType] = useState('');
     const [spotTypeModalVisible, setSpotTypeModalVisible] = useState(false);
+    const [modalOptions, setModalOptions] = useState([]);
+
 
 
     useEffect(() => {
@@ -63,10 +66,54 @@ const AddSensorModuleScreen = ({ navigation }) => {
         }
     };
 
-    const handleOpenModal = (selectionType) => {
+    const handleOpenModal = async (selectionType) => {
+        if (!parkingLot) {
+            alert("No parking lot selected");
+            return;
+        }
+
         setCurrentSelection(selectionType);
-        setModalVisible(true);
+
+        try {
+            let options = [];
+
+            if (selectionType === 'floor') {
+                const floors = await getFloors(parkingLot.id);
+                // Assuming floors is an array of objects with floorId
+                options = floors.map((floor) => floor.floorId.toString());
+            }
+
+            if (selectionType === 'row') {
+                if (!selectedFloor) {
+                    alert("Please select a floor first");
+                    return;
+                }
+                const rows = await getFloorRows(parkingLot.id, selectedFloor);
+                // Assuming rows is an array of objects with rowId
+                options = rows.map((row) => row.rowId);
+            }
+
+            if (selectionType === 'spot') {
+                if (!selectedFloor || !selectedRow) {
+                    alert("Please select both a floor and a row first");
+                    return;
+                }
+
+                // ✅ USE NEW FUNCTION HERE:
+                const spots = await getRowSpots(parkingLot.id, selectedFloor, selectedRow);
+
+                // Assuming spots is an array of objects with spotId
+                options = spots.map((spot) => spot.spotId);
+            }
+
+            setModalOptions(options);
+            setModalVisible(true);
+        } catch (error) {
+            console.error(`Error loading ${selectionType}s:`, error);
+            alert(`Error loading ${selectionType}s`);
+        }
     };
+
 
     const handleSelect = (value) => {
         if (currentSelection === 'floor') setSelectedFloor(value);
@@ -162,13 +209,7 @@ const AddSensorModuleScreen = ({ navigation }) => {
                     <Text style={[styles.sensorText, selectedSensor === "B" && styles.selectedText]}>Sensor B</Text>
                 </TouchableOpacity>
             </View>
-            {/* Spot Type Selection */}
-            <Text style={styles.inputLabel}>Select Spot Type</Text>
-            <TouchableOpacity style={styles.dropdown} onPress={() => setSpotTypeModalVisible(true)}>
-                <Text style={styles.dropdownText}>
-                    {selectedSpotType ? selectedSpotType : "Select Spot Type"}
-                </Text>
-            </TouchableOpacity>
+
 
             {/* Floor Selection */}
             <TouchableOpacity style={styles.dropdown} onPress={() => handleOpenModal('floor')}>
@@ -195,7 +236,7 @@ const AddSensorModuleScreen = ({ navigation }) => {
                 <View style={styles.modalContainer}>
                     <View style={styles.modalContent}>
                         <FlatList
-                            data={mockNumbers}
+                            data={modalOptions}
                             keyExtractor={(item) => item}
                             renderItem={({ item }) => (
                                 <TouchableOpacity style={styles.modalItem} onPress={() => handleSelect(item)}>
