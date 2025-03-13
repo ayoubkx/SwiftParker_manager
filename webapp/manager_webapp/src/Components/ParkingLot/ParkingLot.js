@@ -64,12 +64,31 @@ const ParkingLot = () => {
     setFormData((prevData) => ({ ...prevData, [name]: value }));
   };
 
-  const handleAddFloor = () => {
+  const handleAddFloor = async () => {
     const newFloorId = formData.floors.length;
+    const updatedFloors = [...formData.floors, { floorId: newFloorId, rows: [] }];
     setFormData((prevData) => ({
       ...prevData,
-      floors: [...prevData.floors, { floorId: newFloorId, rows: [] }],
+      floors: updatedFloors,
     }));
+
+    try {
+      const updatedData = {
+        ...formData,
+        floors: updatedFloors,
+        hourlyRateWeekday: parseFloat(formData.hourlyRateWeekday) || 0,
+        dailyRateWeekday: parseFloat(formData.dailyRateWeekday) || 0,
+        hourlyRateWeekend: parseFloat(formData.hourlyRateWeekend) || 0,
+        dailyRateWeekend: parseFloat(formData.dailyRateWeekend) || 0,
+        subscriptionRate: parseFloat(formData.subscriptionRate) || 0,
+      };
+
+      await API.patch(`/parkingLots/${lotId}.json`, updatedData);
+      alert("New floor added successfully!");
+    } catch (error) {
+      console.error("Error adding new floor:", error);
+      setError("Failed to add new floor.");
+    }
   };
 
   const handleSaveChanges = async () => {

@@ -176,11 +176,11 @@ const ParkingLots = () => {
         managerId: currentUser.uid,
         createdAt: new Date().toISOString(),
         floors: parkingLotStructure,
-        hourlyRateWeekday: formData.hourlyRateWeekday,
-        dailyRateWeekday: formData.dailyRateWeekday,
-        hourlyRateWeekend: formData.hourlyRateWeekend,
-        dailyRateWeekend: formData.dailyRateWeekend,
-        subscriptionRate: formData.subscriptionRate,
+        hourlyRateWeekday: parseFloat(formData.hourlyRateWeekday) || 0,
+        dailyRateWeekday: parseFloat(formData.dailyRateWeekday) || 0,
+        hourlyRateWeekend: parseFloat(formData.hourlyRateWeekend) || 0,
+        dailyRateWeekend: parseFloat(formData.dailyRateWeekend) || 0,
+        subscriptionRate: parseFloat(formData.subscriptionRate) || 0,
         phoneNumber: formData.phoneNumber,
       });
   

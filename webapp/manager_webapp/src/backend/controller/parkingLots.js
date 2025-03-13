@@ -1403,6 +1403,11 @@ export const updateParkingLot = async (req, res) => {
     const updatedLot = {
       ...currentLot.data,
       ...updateData,
+      hourlyRateWeekday: parseFloat(updateData.hourlyRateWeekday) || currentLot.data.hourlyRateWeekday,
+      dailyRateWeekday: parseFloat(updateData.dailyRateWeekday) || currentLot.data.dailyRateWeekday,
+      hourlyRateWeekend: parseFloat(updateData.hourlyRateWeekend) || currentLot.data.hourlyRateWeekend,
+      dailyRateWeekend: parseFloat(updateData.dailyRateWeekend) || currentLot.data.dailyRateWeekend,
+      subscriptionRate: parseFloat(updateData.subscriptionRate) || currentLot.data.subscriptionRate,
       updatedAt: new Date().toISOString()
     };
 
