@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import LotCard from "../Cards/LotCard/LotCard";
 import API from "../../backend/api";
+import { createParkingLot, createFloor, createRow, createSpot } from "../../backend/apiFunction";
 import { useAuth } from "../../backend/config/contexts/authContext";
 import "./ParkingLots.css";
 
@@ -130,103 +131,73 @@ const ParkingLots = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Step 1: Get latitude and longitude using OpenStreetMap geocoding
-      const geoResponse = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formData.location)}`
-      );
-      const geoData = await geoResponse.json();
-  
-      if (!geoData || geoData.length === 0) {
-        setError("Unable to find location. Please check the address.");
-        return;
-      }
-  
-      const firstResult = geoData[0];
-      const latitude = parseFloat(firstResult.lat);
-      const longitude = parseFloat(firstResult.lon);
-      const formattedLocation = firstResult.display_name;
-  
-      // Step 2: Create parking lot structure
-      const createSpots = (type, count) => Array.from({ length: count }, (_, index) => ({
-        spotId: `SPOT-${type}-${index}`,
-        type,
-        isReserved: false,
-        status: "available",
-      }));
-  
-      const parkingLotStructure = formData.floorData.map((floor, floorIndex) => ({
-        floorId: floorIndex,
-        rows: floor.rowData.map((row, rowIndex) => ({
-          rowId: `R${floorIndex}${rowIndex}`,
-          spots: [
-            ...createSpots("general", row.generalSpotsPerRow),
-            ...createSpots("handicapped", row.handicappedSpotsPerRow),
-            ...createSpots("EV", row.evSpotsPerRow),
-            ...createSpots("subscription", row.subscriptionSpotsPerRow),
-          ],
-        })),
-      }));
-  
-      // Step 3: Send the request to add the parking lot
-      const response = await API.post("/parkingLots.json", {
+      const parkingLotData = {
         name: formData.name,
-        location: formattedLocation,
-        latitude,
-        longitude,
-        managerId: currentUser.uid,
-        createdAt: new Date().toISOString(),
-        floors: parkingLotStructure,
+        location: formData.location,
         hourlyRateWeekday: parseFloat(formData.hourlyRateWeekday) || 0,
         dailyRateWeekday: parseFloat(formData.dailyRateWeekday) || 0,
         hourlyRateWeekend: parseFloat(formData.hourlyRateWeekend) || 0,
         dailyRateWeekend: parseFloat(formData.dailyRateWeekend) || 0,
         subscriptionRate: parseFloat(formData.subscriptionRate) || 0,
         phoneNumber: formData.phoneNumber,
+      };
+  
+      const { parkingLotId } = await createParkingLot(currentUser.uid, parkingLotData);
+  
+      for (let floorIndex = 0; floorIndex < formData.floors; floorIndex++) {
+        const { floorId } = await createFloor(parkingLotId);
+  
+        for (let rowIndex = 0; rowIndex < formData.floorData[floorIndex].rowsPerFloor; rowIndex++) {
+          const rowId = `R${floorIndex}${rowIndex}`;
+          await createRow(parkingLotId, floorId, rowId);
+  
+          const rowData = formData.floorData[floorIndex].rowData[rowIndex];
+          const spotTypes = [
+            { type: "general", count: rowData.generalSpotsPerRow },
+            { type: "handicapped", count: rowData.handicappedSpotsPerRow },
+            { type: "EV", count: rowData.evSpotsPerRow },
+            { type: "subscription", count: rowData.subscriptionSpotsPerRow },
+          ];
+  
+          for (const spotType of spotTypes) {
+            for (let i = 0; i < spotType.count; i++) {
+              await createSpot(parkingLotId, floorId, rowId, { type: spotType.type, isReserved: false });
+            }
+          }
+        }
+      }
+  
+      const updatedResponse = await API.get(`/managers/${currentUser.uid}/parkingLots.json`);
+      const updatedParkingLotIds = updatedResponse.data || [];
+  
+      const updatedParkingLots = await Promise.all(
+        updatedParkingLotIds.map(async (id) => {
+          const lotResponse = await API.get(`/parkingLots/${id}.json`);
+          return lotResponse.data ? { id, ...lotResponse.data } : null;
+        })
+      );
+  
+      setParkingLots(updatedParkingLots.filter((lot) => lot !== null));
+      setShowForm(false);
+      setFormData({
+        name: "",
+        location: "",
+        hourlyRateWeekday: "",
+        dailyRateWeekday: "",
+        hourlyRateWeekend: "",
+        dailyRateWeekend: "",
+        subscriptionRate: "",
+        phoneNumber: "",
+        floors: 0,
+        floorData: [],
       });
-  
-      const parkingLotId = response.data.name;
-  
-      // Step 4: Update the manager's parking lots list
-      const managerResponse = await API.get(`/managers/${currentUser.uid}.json`);
-      const existingParkingLots = managerResponse.data?.parkingLots || [];
-  
-      await API.patch(`/managers/${currentUser.uid}.json`, {
-        parkingLots: [...existingParkingLots, parkingLotId],
-      });
-  
-      // Step 5: Fetch fresh data before updating the UI
-      setTimeout(async () => {
-        const updatedResponse = await API.get(`/managers/${currentUser.uid}/parkingLots.json`);
-        const updatedParkingLotIds = updatedResponse.data || [];
-  
-        const updatedParkingLots = await Promise.all(
-          updatedParkingLotIds.map(async (id) => {
-            const lotResponse = await API.get(`/parkingLots/${id}.json`);
-            return lotResponse.data ? { id, ...lotResponse.data } : null;
-          })
-        );
-  
-        setParkingLots(updatedParkingLots.filter((lot) => lot !== null));
-        setShowForm(false);
-        setFormData({
-          name: "",
-          location: "",
-          hourlyRateWeekday: "",
-          dailyRateWeekday: "",
-          hourlyRateWeekend: "",
-          dailyRateWeekend: "",
-          subscriptionRate: "",
-          phoneNumber: "",
-          floors: 0,
-          floorData: [],
-        });
-      }, 500); 
-  
     } catch (error) {
       console.error("Error adding parking lot:", error);
       setError("Failed to add parking lot. Please try again.");
     }
   };
+  
+  
 
   if (loading) {
     return <div className="loading-message">Loading parking lots...</div>;

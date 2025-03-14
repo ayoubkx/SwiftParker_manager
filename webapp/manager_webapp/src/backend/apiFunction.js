@@ -4,45 +4,65 @@ import API from './api.js';
 
 // Create a new parking lot
 export const createParkingLot = async (managerId, parkingLotData) => {
-  try {
-    const geoResponse = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(parkingLotData.location)}`
-    );
-    const geoData = await geoResponse.json();
-
-    if (!geoData || geoData.length === 0) {
-      throw new Error('Unable to find location. Please check the address.');
+    try {
+      const geoResponse = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(parkingLotData.location)}`
+      );
+      const geoData = await geoResponse.json();
+  
+      if (!geoData || geoData.length === 0) {
+        throw new Error('Unable to find location. Please check the address.');
+      }
+  
+      const firstResult = geoData[0];
+      const latitude = parseFloat(firstResult.lat);
+      const longitude = parseFloat(firstResult.lon);
+      const formattedLocation = firstResult.display_name;
+  
+      // Ensure availableSpots is calculated correctly
+      const totalAvailableSpots = { EV: 0, general: 0, handicapped: 0, subscription: 0 };
+  
+      if (parkingLotData.floors) {
+        parkingLotData.floors.forEach(floor => {
+          if (floor.rows) {
+            floor.rows.forEach(row => {
+              row.spots = row.spots || []; // 🔹 Fix: Ensure spots is always an array
+              row.spots.forEach(spot => {
+                if (totalAvailableSpots.hasOwnProperty(spot.type)) {
+                  totalAvailableSpots[spot.type] += 1;
+                }
+              });
+            });
+          }
+        });
+      }
+  
+      const newParkingLot = {
+        ...parkingLotData,
+        location: formattedLocation,
+        latitude,
+        longitude,
+        managerId,
+        availableSpots: totalAvailableSpots, // Store calculated values
+        floors: parkingLotData.floors || [],
+        createdAt: new Date().toISOString(),
+      };
+  
+      const response = await API.post('/parkingLots.json', newParkingLot);
+      const parkingLotId = response.data.name;
+  
+      const managerResponse = await API.get(`/managers/${managerId}.json`);
+      const updatedParkingLots = [...(managerResponse.data?.parkingLots || []), parkingLotId];
+  
+      await API.patch(`/managers/${managerId}.json`, { parkingLots: updatedParkingLots });
+  
+      return { success: true, parkingLotId, parkingLot: { id: parkingLotId, ...newParkingLot } };
+    } catch (error) {
+      console.error('Error creating parking lot:', error);
+      throw error;
     }
-
-    const firstResult = geoData[0];
-    const latitude = parseFloat(firstResult.lat);
-    const longitude = parseFloat(firstResult.lon);
-    const formattedLocation = firstResult.display_name;
-
-    const newParkingLot = {
-      ...parkingLotData,
-      location: formattedLocation,
-      latitude,
-      longitude,
-      managerId,
-      floors: parkingLotData.floors || [],
-      createdAt: new Date().toISOString(),
-    };
-
-    const response = await API.post('/parkingLots.json', newParkingLot);
-    const parkingLotId = response.data.name;
-
-    const managerResponse = await API.get(`/managers/${managerId}.json`);
-    const updatedParkingLots = [...(managerResponse.data?.parkingLots || []), parkingLotId];
-
-    await API.patch(`/managers/${managerId}.json`, { parkingLots: updatedParkingLots });
-
-    return { success: true, parkingLotId, parkingLot: { id: parkingLotId, ...newParkingLot } };
-  } catch (error) {
-    console.error('Error creating parking lot:', error);
-    throw error;
-  }
-};
+  };
+  
 
 // Update an existing parking lot
 export const updateParkingLot = async (parkingLotId, updateData) => {
@@ -114,21 +134,34 @@ export const deleteParkingLot = async (managerId, parkingLotId) => {
 
 // Create a new floor
 export const createFloor = async (parkingLotId) => {
-  try {
-    const response = await API.get(`/parkingLots/${parkingLotId}.json`);
-    if (!response.data) throw new Error('Parking lot not found.');
-
-    const newFloor = { floorId: response.data.floors?.length || 0, rows: [] };
-    const updatedFloors = [...(response.data.floors || []), newFloor];
-
-    await API.patch(`/parkingLots/${parkingLotId}.json`, { floors: updatedFloors });
-
-    return { success: true, floorId: newFloor.floorId };
-  } catch (error) {
-    console.error('Error creating floor:', error);
-    throw error;
-  }
-};
+    try {
+      const response = await API.get(`/parkingLots/${parkingLotId}.json`);
+      const parkingLotData = response.data;
+  
+      if (!parkingLotData) {
+        throw new Error('Parking lot not found');
+      }
+  
+      let floorId;
+      let updatedFloors;
+  
+      if (!parkingLotData.floors || parkingLotData.floors.length === 0) {
+        floorId = 0;
+        updatedFloors = [{ floorId, rows: [] }];
+      } else {
+        const lastFloor = parkingLotData.floors[parkingLotData.floors.length - 1];
+        floorId = lastFloor.floorId + 1;
+        updatedFloors = [...parkingLotData.floors, { floorId, rows: [] }];
+      }
+  
+      await API.patch(`/parkingLots/${parkingLotId}.json`, { floors: updatedFloors });
+  
+      return { success: true, floorId };
+    } catch (error) {
+      console.error('Error adding floor:', error);
+      throw error;
+    }
+  };
 
 // Update a floor
 export const updateFloor = async (parkingLotId, floorId, updateData) => {
@@ -149,35 +182,120 @@ export const updateFloor = async (parkingLotId, floorId, updateData) => {
   }
 };
 
-// ---------------------- SPOT MANAGEMENT ----------------------
+// ---------------------- ROW MANAGEMENT ----------------------
 
+// Add a new row to a specific floor in a parking lot
+export const createRow = async (parkingLotId, floorId, rowId) => {
+    try {
+      const response = await API.get(`/parkingLots/${parkingLotId}.json`);
+      const parkingLotData = response.data;
+  
+      if (!parkingLotData) {
+        throw new Error('Parking lot not found');
+      }
+  
+      const floor = parkingLotData.floors.find((f) => f.floorId === parseInt(floorId));
+  
+      if (!floor) {
+        throw new Error('Floor not found');
+      }
+  
+      if (!floor.rows) {
+        floor.rows = [];
+      }
+  
+      if (floor.rows.some((row) => row.rowId === rowId)) {
+        throw new Error(`Row with ID ${rowId} already exists`);
+      }
+  
+      // 🔹 Ensure spots is an empty array
+      const newRow = { rowId, spots: [] };
+  
+      const updatedFloors = parkingLotData.floors.map((f) =>
+        f.floorId === parseInt(floorId) ? { ...f, rows: [...f.rows, newRow] } : f
+      );
+  
+      await API.patch(`/parkingLots/${parkingLotId}.json`, { floors: updatedFloors });
+  
+      return { success: true, rowId };
+    } catch (error) {
+      console.error('Error adding row:', error);
+      throw error;
+    }
+  };
+  
+  
+
+// ---------------------- SPOT MANAGEMENT ----------------------
 // Create a new spot
 export const createSpot = async (parkingLotId, floorId, rowId, spotData) => {
-  try {
-    const response = await API.get(`/parkingLots/${parkingLotId}.json`);
-    if (!response.data) throw new Error('Parking lot not found.');
+    try {
+      const { type, isReserved } = spotData;
+  
+      const response = await API.get(`/parkingLots/${parkingLotId}.json`);
+      const parkingLotData = response.data;
+  
+      if (!parkingLotData) {
+        throw new Error('Parking lot not found');
+      }
+  
+      const floor = parkingLotData.floors.find((f) => f.floorId === parseInt(floorId));
+      if (!floor) {
+        throw new Error('Floor not found');
+      }
+  
+      const row = floor.rows.find((r) => r.rowId === rowId);
+      if (!row) {
+        throw new Error('Row not found');
+      }
+  
+      // Ensure spots is always an array
+      if (!row.spots) {
+        row.spots = [];
+      }
+  
+      // Generate a unique spot ID
+      const spotId = `SPOT-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+  
+      const newSpot = {
+        spotId,
+        type,
+        isReserved: isReserved || false,
+        status: 'available',
+      };
+  
+      // Update only the targeted row
+      const updatedRows = floor.rows.map((r) =>
+        r.rowId === rowId ? { ...r, spots: [...r.spots, newSpot] } : r
+      );
+  
+      // Update only the targeted floor
+      const updatedFloors = parkingLotData.floors.map((f) =>
+        f.floorId === parseInt(floorId) ? { ...f, rows: updatedRows } : f
+      );
+  
+      // Update available spots count
+      const updatedAvailableSpots = {
+        ...parkingLotData.availableSpots,
+        [type]: (parkingLotData.availableSpots?.[type] || 0) + 1,
+      };
+  
+      // Patch only the modified floor
+      await API.patch(`/parkingLots/${parkingLotId}/floors/${floorId}.json`, { rows: updatedRows });
+  
+      // Update available spots separately
+      await API.patch(`/parkingLots/${parkingLotId}.json`, {
+        availableSpots: updatedAvailableSpots,
+      });
+  
+      return { success: true, spotId };
+    } catch (error) {
+      console.error('Error adding spot:', error);
+      throw error;
+    }
+  };
+  
 
-    const updatedFloors = response.data.floors.map(f =>
-      f.floorId === parseInt(floorId)
-        ? {
-            ...f,
-            rows: f.rows.map(r =>
-              r.rowId === rowId
-                ? { ...r, spots: [...(r.spots || []), { ...spotData, spotId: `SPOT-${Date.now()}` }] }
-                : r
-            )
-          }
-        : f
-    );
-
-    await API.patch(`/parkingLots/${parkingLotId}.json`, { floors: updatedFloors });
-
-    return { success: true };
-  } catch (error) {
-    console.error('Error creating spot:', error);
-    throw error;
-  }
-};
 
 // Update a spot
 export const updateSpot = async (parkingLotId, floorId, rowId, spotId, updateData) => {
@@ -212,28 +330,4 @@ export const updateSpot = async (parkingLotId, floorId, rowId, spotId, updateDat
   }
 };
 
-// Delete a spot
-export const deleteSpot = async (parkingLotId, floorId, rowId, spotId) => {
-  try {
-    const response = await API.get(`/parkingLots/${parkingLotId}.json`);
-    if (!response.data) throw new Error('Parking lot not found.');
 
-    const updatedFloors = response.data.floors.map(f =>
-      f.floorId === parseInt(floorId)
-        ? {
-            ...f,
-            rows: f.rows.map(r =>
-              r.rowId === rowId ? { ...r, spots: r.spots.filter(s => s.spotId !== spotId) } : r
-            )
-          }
-        : f
-    );
-
-    await API.patch(`/parkingLots/${parkingLotId}.json`, { floors: updatedFloors });
-
-    return { success: true };
-  } catch (error) {
-    console.error('Error deleting spot:', error);
-    throw error;
-  }
-};
