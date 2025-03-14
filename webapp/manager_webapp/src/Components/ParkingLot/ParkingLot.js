@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import API from "../../backend/api";
+import { deleteParkingLot, updateParkingLot, createFloor } from "../../backend/apiFunction";
 import "./ParkingLot.css";
 
 const ParkingLot = () => {
@@ -65,25 +66,14 @@ const ParkingLot = () => {
   };
 
   const handleAddFloor = async () => {
-    const newFloorId = formData.floors.length;
-    const updatedFloors = [...formData.floors, { floorId: newFloorId, rows: [] }];
-    setFormData((prevData) => ({
-      ...prevData,
-      floors: updatedFloors,
-    }));
-
     try {
-      const updatedData = {
-        ...formData,
+      const response = await createFloor(parkingLot.id);
+      const newFloorId = response.floorId;
+      const updatedFloors = [...formData.floors, { floorId: newFloorId, rows: [] }];
+      setFormData((prevData) => ({
+        ...prevData,
         floors: updatedFloors,
-        hourlyRateWeekday: parseFloat(formData.hourlyRateWeekday) || 0,
-        dailyRateWeekday: parseFloat(formData.dailyRateWeekday) || 0,
-        hourlyRateWeekend: parseFloat(formData.hourlyRateWeekend) || 0,
-        dailyRateWeekend: parseFloat(formData.dailyRateWeekend) || 0,
-        subscriptionRate: parseFloat(formData.subscriptionRate) || 0,
-      };
-
-      await API.patch(`/parkingLots/${lotId}.json`, updatedData);
+      }));
       alert("New floor added successfully!");
     } catch (error) {
       console.error("Error adding new floor:", error);
@@ -102,7 +92,7 @@ const ParkingLot = () => {
         subscriptionRate: parseFloat(formData.subscriptionRate) || 0,
       };
 
-      await API.patch(`/parkingLots/${lotId}.json`, updatedData);
+      await updateParkingLot(parkingLot.id, updatedData);
       alert("Parking lot details updated successfully!");
     } catch (error) {
       console.error("Error updating parking lot:", error);
@@ -113,7 +103,8 @@ const ParkingLot = () => {
   const handleDeleteParkingLot = async () => {
     if (window.confirm("Are you sure you want to delete this parking lot?")) {
       try {
-        await API.delete(`/parkingLots/${parkingLot.id}.json`);
+        const managerId = parkingLot.managerId; 
+        await deleteParkingLot(managerId, parkingLot.id);
         alert("Parking lot deleted successfully!");
         navigate("/parking-list"); 
       } catch (error) {
