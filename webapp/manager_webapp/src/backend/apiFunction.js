@@ -260,6 +260,23 @@ export const updateFloor = async (parkingLotId, floorId, updateData) => {
   }
 };
 
+// ---------Get floors for a parking lot------------
+export const getFloors = async (parkingLotId) => {
+  try {
+    const parkingLotResponse = await API.get(`/parkingLots/${parkingLotId}.json`);
+    const parkingLotData = parkingLotResponse.data;
+
+    if (!parkingLotData) {
+      throw new Error('Parking lot not found');
+    }
+
+    return parkingLotData.floors;
+  } catch (error) {
+    console.error('Error getting floors:', error);
+    throw error;
+  }
+};
+
 // ---------------------- ROW MANAGEMENT ----------------------
 
 // Add a new row to a specific floor in a parking lot
@@ -366,9 +383,7 @@ export const createSpot = async (parkingLotId, floorId, rowId, spotData) => {
       console.error('Error adding spot:', error);
       throw error;
     }
-  };
-  
-
+  };  
 
 // Update a spot
 export const updateSpot = async (parkingLotId, floorId, rowId, spotId, updateData) => {

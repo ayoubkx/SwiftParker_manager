@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import API from "../../backend/api";
-import { deleteParkingLot, updateParkingLot, createFloor } from "../../backend/apiFunction";
+import { deleteParkingLot, updateParkingLot, createFloor, getParkingLotInfo, getFloors } from "../../backend/apiFunction";
 import "./ParkingLot.css";
 
 const ParkingLot = () => {
@@ -27,24 +26,24 @@ const ParkingLot = () => {
   useEffect(() => {
     const fetchParkingLot = async () => {
       try {
-        const response = await API.get(`/parkingLots/${lotId}.json`);
-        if (response.data) {
-          setParkingLot({ id: lotId, ...response.data });
-          setFormData({
-            name: response.data.name,
-            location: response.data.location,
-            phoneNumber: response.data.phoneNumber || "",
-            hourlyRateWeekday: response.data.hourlyRateWeekday || "",
-            dailyRateWeekday: response.data.dailyRateWeekday || "",
-            hourlyRateWeekend: response.data.hourlyRateWeekend || "",
-            dailyRateWeekend: response.data.dailyRateWeekend || "",
-            subscriptionRate: response.data.subscriptionRate || "",
-            availableSpots: response.data.availableSpots || { EV: 0, general: 0, handicapped: 0, subscription: 0 },
-            floors: response.data.floors || [],
-          });
-        } else {
-          setError("Parking lot not found.");
-        }
+        const parkingLotData = await getParkingLotInfo(lotId);
+        setParkingLot({ id: lotId, ...parkingLotData });
+
+        // Fetch floors data
+        const floorsData = await getFloors(lotId);
+
+        setFormData({
+          name: parkingLotData.name,
+          location: parkingLotData.location,
+          phoneNumber: parkingLotData.phoneNumber || "",
+          hourlyRateWeekday: parkingLotData.hourlyRateWeekday || "",
+          dailyRateWeekday: parkingLotData.dailyRateWeekday || "",
+          hourlyRateWeekend: parkingLotData.hourlyRateWeekend || "",
+          dailyRateWeekend: parkingLotData.dailyRateWeekend || "",
+          subscriptionRate: parkingLotData.subscriptionRate || "",
+          availableSpots: parkingLotData.availableSpots,
+          floors: floorsData || [], // Use floorsData instead of parkingLotData.floors
+        });
       } catch (err) {
         console.error("Error fetching parking lot:", err);
         setError("Failed to load parking lot details.");
@@ -55,6 +54,7 @@ const ParkingLot = () => {
 
     fetchParkingLot();
   }, [lotId]);
+
 
   const handleManageFloor = (floorId) => {
     navigate(`/parking-lot/${parkingLot.id}/floor/${floorId}`);
@@ -67,13 +67,16 @@ const ParkingLot = () => {
 
   const handleAddFloor = async () => {
     try {
-      const response = await createFloor(parkingLot.id);
-      const newFloorId = response.floorId;
-      const updatedFloors = [...formData.floors, { floorId: newFloorId, rows: [] }];
+      await createFloor(parkingLot.id);
+      
+      // Fetch updated floors list
+      const updatedFloors = await getFloors(parkingLot.id);
+
       setFormData((prevData) => ({
         ...prevData,
-        floors: updatedFloors,
+        floors: updatedFloors || [],
       }));
+
       alert("New floor added successfully!");
     } catch (error) {
       console.error("Error adding new floor:", error);
@@ -114,16 +117,10 @@ const ParkingLot = () => {
     }
   };
 
-  const calculateTotalSpots = (type) => {
-    return formData.floors.reduce((total, floor) => {
-      if (!Array.isArray(floor.rows)) return total;
-      return total + floor.rows.reduce((rowTotal, row) => {
-        if (!Array.isArray(row.spots)) return rowTotal;
-        return rowTotal + row.spots.filter(spot => spot.type === type && spot.status === "available").length;
-      }, 0);
-    }, 0);
+  const getTotalSpots = (type) => {
+    return formData.availableSpots?.[type] || 0;
   };
-
+  
   if (loading) return <div className="loading-message">Loading parking lot details...</div>;
   if (error) return <div className="error-message">{error}</div>;
 
@@ -173,10 +170,10 @@ const ParkingLot = () => {
           <tr>
             <td>Available Spots</td>
             <td>
-              <div>Total General Spots: {calculateTotalSpots("general")}</div>
-              <div>Total EV Spots: {calculateTotalSpots("EV")}</div>
-              <div>Total Handicapped Spots: {calculateTotalSpots("handicapped")}</div>
-              <div>Total Subscription Spots: {calculateTotalSpots("subscription")}</div>
+              <div>Total General Spots: {getTotalSpots("general")}</div>
+              <div>Total EV Spots: {getTotalSpots("EV")}</div>
+              <div>Total Handicapped Spots: {getTotalSpots("handicapped")}</div>
+              <div>Total Subscription Spots: {getTotalSpots("subscription")}</div>
             </td>
           </tr>
           <tr>
