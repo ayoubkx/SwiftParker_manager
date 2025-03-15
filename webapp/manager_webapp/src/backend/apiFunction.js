@@ -130,6 +130,84 @@ export const deleteParkingLot = async (managerId, parkingLotId) => {
   }
 };
 
+// Get the all the info of a specific parking lot by its ID.
+export const getParkingLot = async (parkingLotId) => {
+  try {
+    const response = await API.get(`/parkingLots/${parkingLotId}.json`);
+
+    if (!response.data) {
+      throw new Error('Parking lot not found');
+    }
+
+    return {
+      id: parkingLotId,
+      ...response.data
+    };
+  } catch (error) {
+    console.error('Error getting parking lot:', error);
+    throw error;
+  }
+};
+
+//--------------------get the parking lot info needed by the user
+export const getParkingLotInfo = async (parkingLotId) => {
+  try {
+    const parkingLotResponse = await API.get(`/parkingLots/${parkingLotId}.json`);
+    const parkingLotData = parkingLotResponse.data;
+
+    if (!parkingLotData) {
+      throw new Error('Parking lot not found');
+    }
+
+    return {
+      name: parkingLotData.name,
+      location: parkingLotData.location,
+      hourlyRateWeekday: parkingLotData.hourlyRateWeekday,
+      dailyRateWeekday: parkingLotData.dailyRateWeekday,
+      hourlyRateWeekend: parkingLotData.hourlyRateWeekend,
+      dailyRateWeekend: parkingLotData.dailyRateWeekend,
+      subscriptionRate: parkingLotData.subscriptionRate,
+      phoneNumber: parkingLotData.phoneNumber,
+      availableSpots: parkingLotData.availableSpots || {
+        general: 0,
+        handicapped: 0,
+        EV: 0,
+        subscription: 0
+      }
+    };
+  } catch (error) {
+    console.error('Error getting parking lot information:', error);
+    throw error;
+  }
+};
+
+// Get all parking lots for a specific manager.
+export const getManagerParkingLots = async (managerId) => {
+  try {
+    const managerResponse = await API.get(`/managers/${managerId}.json`);
+    const parkingLotIds = managerResponse.data.parkingLots || [];
+
+    if (parkingLotIds.length === 0) {
+      return [];
+    }
+
+    const parkingLots = await Promise.all(
+      parkingLotIds.map(async (id) => {
+        const response = await API.get(`/parkingLots/${id}.json`);
+        return {
+          id,
+          ...response.data
+        };
+      })
+    );
+
+    return parkingLots;
+  } catch (error) {
+    console.error('Error getting parking lots:', error);
+    throw error;
+  }
+};
+
 // ---------------------- FLOOR MANAGEMENT ----------------------
 
 // Create a new floor
@@ -267,11 +345,6 @@ export const createSpot = async (parkingLotId, floorId, rowId, spotData) => {
       // Update only the targeted row
       const updatedRows = floor.rows.map((r) =>
         r.rowId === rowId ? { ...r, spots: [...r.spots, newSpot] } : r
-      );
-  
-      // Update only the targeted floor
-      const updatedFloors = parkingLotData.floors.map((f) =>
-        f.floorId === parseInt(floorId) ? { ...f, rows: updatedRows } : f
       );
   
       // Update available spots count

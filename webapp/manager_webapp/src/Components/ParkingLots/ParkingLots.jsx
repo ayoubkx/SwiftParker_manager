@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import LotCard from "../Cards/LotCard/LotCard";
-import API from "../../backend/api";
-import { createParkingLot, createFloor, createRow, createSpot } from "../../backend/apiFunction";
+import { createParkingLot, createFloor, createRow, createSpot, getManagerParkingLots, getParkingLot } from "../../backend/apiFunction";
 import { useAuth } from "../../backend/config/contexts/authContext";
 import "./ParkingLots.css";
 
@@ -32,32 +31,10 @@ const ParkingLots = () => {
         if (!currentUser) {
           throw new Error("No manager is logged in.");
         }
-
-        const response = await API.get(`/managers/${currentUser.uid}/parkingLots.json`);
-        const parkingLotIds = response.data || [];
-
-        const validParkingLotIds = parkingLotIds.filter((id) => id !== null && typeof id === "string");
-
-        if (validParkingLotIds.length === 0) {
-          setParkingLots([]);
-          setLoading(false);
-          return;
-        }
-
-        const parkingLotsData = await Promise.all(
-          validParkingLotIds.map(async (id) => {
-            const lotResponse = await API.get(`/parkingLots/${id}.json`);
-            if (lotResponse.data) {
-              return {
-                id,
-                ...lotResponse.data,
-              };
-            }
-            return null;
-          })
-        );
-
-        setParkingLots(parkingLotsData.filter((lot) => lot !== null));
+    
+        const parkingLotsData = await getManagerParkingLots(currentUser.uid);
+    
+        setParkingLots(parkingLotsData);
       } catch (err) {
         console.error("Error fetching parking lots:", err);
         setError("Failed to fetch parking lots. Please try again later.");
@@ -65,13 +42,20 @@ const ParkingLots = () => {
         setLoading(false);
       }
     };
+    
 
     fetchParkingLots();
   }, [currentUser]);
 
-  const handleManageLot = (lotId) => {
-    navigate(`/parkinglot/${lotId}`);
+  const handleManageLot = async (lotId) => {
+    try {
+      const parkingLotInfo = await getParkingLot(lotId);
+      navigate(`/parkinglot/${lotId}`, { state: { parkingLot: parkingLotInfo } });
+    } catch (error) {
+      console.error("Error fetching parking lot details:", error);
+    }
   };
+  
 
   const handleAddParkingLot = () => {
     setShowForm(true);
@@ -166,18 +150,11 @@ const ParkingLots = () => {
           }
         }
       }
-  
-      const updatedResponse = await API.get(`/managers/${currentUser.uid}/parkingLots.json`);
-      const updatedParkingLotIds = updatedResponse.data || [];
-  
-      const updatedParkingLots = await Promise.all(
-        updatedParkingLotIds.map(async (id) => {
-          const lotResponse = await API.get(`/parkingLots/${id}.json`);
-          return lotResponse.data ? { id, ...lotResponse.data } : null;
-        })
-      );
-  
-      setParkingLots(updatedParkingLots.filter((lot) => lot !== null));
+      
+      const updatedParkingLots = await getManagerParkingLots(currentUser.uid);
+      setParkingLots(updatedParkingLots);
+
+
       setShowForm(false);
       setFormData({
         name: "",
