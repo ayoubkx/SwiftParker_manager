@@ -4,6 +4,8 @@ import LotCard from "../Cards/LotCard/LotCard";
 import { createParkingLot, createFloor, createRow, createSpot, getManagerParkingLots, getParkingLot } from "../../backend/apiFunction";
 import { useAuth } from "../../backend/config/contexts/authContext";
 import "./ParkingLots.css";
+import 'react-phone-number-input/style.css';
+import PhoneInput from 'react-phone-number-input';
 
 const ParkingLots = () => {
   const navigate = useNavigate();
@@ -63,23 +65,44 @@ const ParkingLots = () => {
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
+    
+    // Handle phone number separately using PhoneInput
+    if (name === "phoneNumber") {
+      setFormData((prevData) => ({
+        ...prevData,
+        phoneNumber: value, // PhoneInput handles formatting, so we set the value directly
+      }));
+      return;
+    }
+  
+    setFormData((prevData) => ({
+      ...prevData,
       [name]: value,
-    });
-
+    }));
+  
+    // Handle floors separately
     if (name === "floors") {
-      const updatedFloorData = Array.from({ length: value }, (_, index) => ({
+      const updatedFloorData = Array.from({ length: Number(value) }, () => ({
         rowsPerFloor: 0,
         rowData: [],
       }));
-      setFormData({
-        ...formData,
-        floors: value,
+      setFormData((prevData) => ({
+        ...prevData,
+        floors: Number(value),
         floorData: updatedFloorData,
-      });
+      }));
     }
   };
+  
+  
+  const handlePhoneChange = (value) => {
+    setFormData((prevData) => ({
+      ...prevData,
+      phoneNumber: value,
+    }));
+  };
+  
+
 
   const handleFloorChange = (index, e) => {
     const { name, value } = e.target;
@@ -216,8 +239,15 @@ const ParkingLots = () => {
             </label>
             <label>
               Phone Number:
-              <input type="text" name="phoneNumber" value={formData.phoneNumber} onChange={handleFormChange} />
+              <PhoneInput
+                defaultCountry="CA"
+                international
+                placeholder="Enter phone number"
+                value={formData.phoneNumber}
+                onChange={handlePhoneChange}
+              />
             </label>
+
             <label>
               Hourly Rate (Weekday):
               <input type="number" name="hourlyRateWeekday" value={formData.hourlyRateWeekday} onChange={handleFormChange} />
