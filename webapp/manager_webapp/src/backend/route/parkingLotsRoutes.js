@@ -19,7 +19,11 @@ import {
   getAllDevices,
   deleteDevice,
   addDeviceToSpot,
-  removeDeviceFromSpot
+  removeDeviceFromSpot,
+  addQrScanner,
+  addQrScannerToParkingLot,
+  removeQrScannerFromParkingLot,
+  deleteQrScanner
 } from '../controller/parkingLots.js';
 
 export default function setupParkingLotRoutes(app) {
@@ -50,7 +54,14 @@ export default function setupParkingLotRoutes(app) {
  app.post('/api/device',addDevice);
  app.get('/api/device', getAllDevices);
  app.delete('/api/device/:deviceId', deleteDevice);
- app.patch('/api/parkingLots/:parkingLotId/floors/:floorId/rows/:rowId/spots/:spotId/device',addDeviceToSpot);
+ app.patch('/api/parkingLots/:parkingLotId/floors/:floorId/rows/:rowId/spots/:spotNumber/device', addDeviceToSpot);
  app.delete('/api/parkingLots/:parkingLotId/floors/:floorId/rows/:rowId/spots/:spotId/device', removeDeviceFromSpot);
 
+//Qr Scanner management routes
+app.post('/api/qrscanner', addQrScanner);
+app.patch('/api/qrscanner/:QrScannerId/parkingLot/:parkingLotId', addQrScannerToParkingLot);
+app.patch('/api/qrscanner/:QrScannerId/removeParkingLot', removeQrScannerFromParkingLot);
+app.delete('/api/qrscanner/:QrScannerId', deleteQrScanner);
+
 }
+

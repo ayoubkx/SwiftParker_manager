@@ -210,26 +210,67 @@
 // // Delete a specific parking lot by its ID.
 // export const deleteParkingLot = async (managerId, parkingLotId) => {
 //   try {
+//     // Get the parking lot data first to find all devices
+//     const parkingLotResponse = await API.get(`/parkingLots/${parkingLotId}.json`);
+//     const parkingLotData = parkingLotResponse.data;
+
+//     if (!parkingLotData) {
+//       throw new Error('Parking lot not found');
+//     }
+
+//     // Collect all devices in the parking lot using flatMap
+//     const deviceReferences = new Set(
+//       (parkingLotData.floors || [])
+//         .flatMap(floor => floor.rows || [])
+//         .flatMap(row => row.spots || [])
+//         .filter(spot => spot?.deviceId)
+//         .map(spot => spot.deviceId)
+//     );
+
+//     // Clean up all device references in parallel
+//     const deviceCleanupPromises = Array.from(deviceReferences).map(async deviceId => {
+//       try {
+//         // Reset all device location data
+//         return API.patch(`/device/${deviceId}.json`, {
+//           parkingLotId: null,
+//           floorId: null,
+//           rowId: null,
+//           spots: []
+//         });
+//       } catch (deviceError) {
+//         console.error(`Error cleaning up device ${deviceId}:`, deviceError);
+//       }
+//     });
+
+//     // Wait for all device cleanup operations to complete
+//     await Promise.all(deviceCleanupPromises);
+
+//     // Get manager data
 //     const managerResponse = await API.get(`/managers/${managerId}.json`);
 //     const managerData = managerResponse.data;
 
+//     // Remove parking lot from manager's list
 //     const updatedParkingLots = (managerData.parkingLots || []).filter(
 //       id => id !== parkingLotId
 //     );
 
+//     // Update manager's parking lots array
 //     await API.patch(`/managers/${managerId}.json`, {
 //       parkingLots: updatedParkingLots
 //     });
 
+//     // Finally, delete the parking lot
 //     await API.delete(`/parkingLots/${parkingLotId}.json`);
 
-//     return { success: true };
+//     return {
+//       success: true,
+//       message: 'Parking lot and associated device references deleted successfully'
+//     };
 //   } catch (error) {
 //     console.error('Error deleting parking lot:', error);
 //     throw error;
 //   }
 // };
-
 // // Floor Management
 
 // // ---------Add a floor to a parking lot------------
@@ -623,6 +664,7 @@
 //         floorId: parseInt(floorId),
 //         rowId: rowId
 //       });
+//     }
 
 //       // Update available spots count
 //       const currentAvailability = parkingLotData.availableSpots?.[type] || 0;
@@ -634,8 +676,6 @@
 //       await API.patch(`/parkingLots/${parkingLotId}.json`, {
 //         availableSpots: updatedAvailableSpots
 //       });
-//     }
-
 //     return {
 //       success: true,
 //       spotId,
@@ -705,6 +745,7 @@
 //  // Delete a spot
 // export const deleteSpot = async (parkingLotId, floorId, rowId, spotId) => {
 //   try {
+//     // Get the parking lot data
 //     const parkingLotResponse = await API.get(`/parkingLots/${parkingLotId}.json`);
 //     const parkingLotData = parkingLotResponse.data;
 
@@ -712,21 +753,33 @@
 //       throw new Error('Parking lot not found');
 //     }
 
+//     // Find the floor
 //     const floor = parkingLotData.floors.find(f => f.floorId === parseInt(floorId));
 //     if (!floor) {
 //       throw new Error('Floor not found');
 //     }
 
+//     // Find the row
 //     const row = floor.rows.find(r => r.rowId === rowId);
 //     if (!row) {
 //       throw new Error('Row not found');
 //     }
 
+//     // Find the spot
 //     const spot = row.spots.find(s => s.spotId === spotId);
 //     if (!spot) {
 //       throw new Error('Spot not found');
 //     }
 
+//     // Update availableSpots count based on spot type
+//     const spotType = spot.type;
+//     const currentCount = parkingLotData.availableSpots[spotType] || 0;
+//     const updatedAvailableSpots = {
+//       ...parkingLotData.availableSpots,
+//       [spotType]: Math.max(0, currentCount - 1)
+//     };
+
+//     // If spot has a device, update the device's spots array
 //     if (spot.deviceId) {
 //       const deviceResponse = await API.get(`/device/${spot.deviceId}.json`);
 //       const deviceData = deviceResponse.data;
@@ -749,6 +802,7 @@
 //       }
 //     }
 
+//     // Remove the spot from the row
 //     const updatedFloors = parkingLotData.floors.map(f => {
 //       if (f.floorId === parseInt(floorId)) {
 //         return {
@@ -767,20 +821,22 @@
 //       return f;
 //     });
 
+//     // Update the parking lot
 //     await API.patch(`/parkingLots/${parkingLotId}.json`, {
-//       floors: updatedFloors
+//       floors: updatedFloors,
+//       availableSpots: updatedAvailableSpots
 //     });
 
 //     return {
 //       success: true,
-//       message: 'Spot deleted successfully'
+//       message: 'Spot deleted successfully',
+//       updatedAvailability: updatedAvailableSpots
 //     };
 //   } catch (error) {
 //     console.error('Error deleting spot:', error);
 //     throw error;
 //   }
 // };
-
 // //------ Update a spot
 // export const updateSpot = async (parkingLotId, floorId, rowId, spotId, updateData) => {
 //   try {
@@ -1421,22 +1477,61 @@ export const updateParkingLot = async (req, res) => {
 //-------------delete a parking lot
 export const deleteParkingLot = async (req, res) => {
   try {
-    const managerId = req.params.managerId;
-    const parkingLotId = req.params.parkingLotId;
+    const { managerId, parkingLotId } = req.params;
+
+    // Get the parking lot data first to find all devices
+    const parkingLotResponse = await API.get(`/parkingLots/${parkingLotId}.json`);
+    const parkingLotData = parkingLotResponse.data;
+
+    if (!parkingLotData) {
+      return res.status(404).json({ error: 'Parking lot not found' });
+    }
+
+    // Collect all devices in the parking lot using flatMap
+    const deviceReferences = new Set(
+      (parkingLotData.floors || [])
+        .flatMap(floor => floor.rows || [])
+        .flatMap(row => row.spots || [])
+        .filter(spot => spot?.deviceId)
+        .map(spot => spot.deviceId)
+    );
+
+    // Clean up all device references
+    for (const deviceId of deviceReferences) {
+      try {
+        // Reset all device location data
+        await API.patch(`/device/${deviceId}.json`, {
+          parkingLotId: null,
+          floorId: null,
+          rowId: null,
+          spots: []
+        });
+      } catch (deviceError) {
+        console.error(`Error cleaning up device ${deviceId}:`, deviceError);
+      }
+    }
+
+    // Get manager data
     const managerResponse = await API.get(`/managers/${managerId}.json`);
     const managerData = managerResponse.data;
 
+    // Remove parking lot from manager's list
     const updatedParkingLots = (managerData.parkingLots || []).filter(
       id => id !== parkingLotId
     );
 
+    // Update manager's parking lots array
     await API.patch(`/managers/${managerId}.json`, {
       parkingLots: updatedParkingLots
     });
 
+    // Finally, delete the parking lot
     await API.delete(`/parkingLots/${parkingLotId}.json`);
 
-    res.status(200).json({ success: true });
+    res.status(200).json({ 
+      success: true,
+      message: 'Parking lot and associated device references deleted successfully'
+    });
   } catch (error) {
     console.error('Error deleting parking lot:', error);
     res.status(500).json({ error: 'Failed to delete parking lot' });
@@ -1570,6 +1665,8 @@ export const addRow = async (req, res) => {
   }
 };
 //--------- Add a spot to a row
+
+// Original addSpot function without position attribute
 export const addSpot = async (req, res) => {
   try {
     const { parkingLotId, floorId, rowId } = req.params;
@@ -1606,7 +1703,7 @@ export const addSpot = async (req, res) => {
       return `SPOT-${result}`;
     };
 
-    // Get the current parking lot data to get the manager ID
+    // Get the current parking lot data
     const parkingLotResponse = await API.get(`/parkingLots/${parkingLotId}.json`);
     const parkingLotData = parkingLotResponse.data;
 
@@ -1619,21 +1716,26 @@ export const addSpot = async (req, res) => {
 
     // Function to check if spotId is unique within manager's parking lots
     const isSpotIdUniqueForManager = async (spotId) => {
-      // Get all parking lots
       const parkingLotsResponse = await API.get('/parkingLots.json');
       const parkingLots = parkingLotsResponse.data;
       
       if (!parkingLots) return true;
 
-      // Filter for manager's parking lots and check spots
-      for (const lot of Object.values(parkingLots)) {
-        // Skip if not manager's lot
+      for (const lotId in parkingLots) {
+        const lot = parkingLots[lotId];
+        
         if (lot.managerId !== managerId) continue;
 
-        for (const floor of lot.floors || []) {
-          for (const row of floor.rows || []) {
-            const spotExists = (row.spots || []).some(spot => spot.spotId === spotId);
-            if (spotExists) return false;
+        if (lot.floors && Array.isArray(lot.floors)) {
+          for (const floor of lot.floors) {
+            if (floor.rows && Array.isArray(floor.rows)) {
+              for (const row of floor.rows) {
+                if (row.spots && Array.isArray(row.spots)) {
+                  const spotExists = row.spots.some(spot => spot.spotId === spotId);
+                  if (spotExists) return false;
+                }
+              }
+            }
           }
         }
       }
@@ -1660,16 +1762,12 @@ export const addSpot = async (req, res) => {
 
     // Find the floor with the matching floor ID
     const floor = parkingLotData.floors.find((f) => f.floorId === parseInt(floorId));
-
-    // Check if the floor exists
     if (!floor) {
       return res.status(404).json({ error: 'Floor not found' });
     }
 
     // Find the row with the matching row ID
     const row = floor.rows.find((r) => r.rowId === rowId);
-
-    // Check if the row exists
     if (!row) {
       return res.status(404).json({ error: 'Row not found' });
     }
@@ -1718,15 +1816,17 @@ export const addSpot = async (req, res) => {
 
     let updatedFloors;
 
-    if (row.spots === undefined) {
-      const newSpot = {
-        spotId,
-        type,
-        status: 'available',
-        isReserved: false,
-        ...(deviceId && { deviceId, sensorId })
-      };
+    // Create the new spot
+    const newSpot = {
+      spotId,
+      type,
+      status: 'available',
+      isReserved: isReserved || false,
+      ...(deviceId && { deviceId, sensorId })
+    };
 
+    if (row.spots === undefined) {
+      // If no spots exist yet, create a new spots array
       updatedFloors = parkingLotData.floors.map((f) =>
         f.floorId === parseInt(floorId) 
           ? {
@@ -1740,14 +1840,7 @@ export const addSpot = async (req, res) => {
           : f
       );
     } else {
-      const newSpot = {
-        spotId,
-        type,
-        status: 'available',
-        isReserved,
-        ...(deviceId && { deviceId, sensorId })
-      };
-
+      // Add to existing spots array
       updatedFloors = parkingLotData.floors.map((f) =>
         f.floorId === parseInt(floorId)
           ? {
@@ -1767,13 +1860,12 @@ export const addSpot = async (req, res) => {
       floors: updatedFloors
     });
 
-    // If device was provided, update the device and availability count
+    // If device was provided, update the device with spot and location information
     if (deviceId) {
       const updatedSpots = deviceData.spots === undefined 
         ? [spotId]
         : [...deviceData.spots, spotId];
 
-      // Update device information
       await API.patch(`/device/${deviceId}.json`, {
         spots: updatedSpots,
         parkingLotId,
@@ -1781,17 +1873,24 @@ export const addSpot = async (req, res) => {
         rowId: rowId
       });
 
-      // Update available spots count only when device is provided
-      const currentAvailability = parkingLotData.availableSpots?.[type] || 0;
-      const updatedAvailableSpots = {
-        ...parkingLotData.availableSpots,
-        [type]: currentAvailability + 1
-      };
+      // Only update availableSpots if type is not empty
+      if (type && type.trim() !== '') {
+        try {
+          // Update available spots count
+          const currentAvailability = parkingLotData.availableSpots?.[type] || 0;
+          const updatedAvailableSpots = {
+            ...parkingLotData.availableSpots,
+            [type]: currentAvailability + 1
+          };
 
-      // Update availability count
-      await API.patch(`/parkingLots/${parkingLotId}.json`, {
-        availableSpots: updatedAvailableSpots
-      });
+          await API.patch(`/parkingLots/${parkingLotId}.json`, {
+            availableSpots: updatedAvailableSpots
+          });
+        } catch (error) {
+          console.error('Error updating availability count:', error);
+          // Continue despite availability update error
+        }
+      }
     }
 
     // Return the success response
@@ -1804,6 +1903,7 @@ export const addSpot = async (req, res) => {
     res.status(500).json({ error: 'Failed to add spot' });
   }
 };
+
 //-----Add Devices
 export const addDevice= async (req, res) => {
   try {
@@ -2078,6 +2178,7 @@ export const deleteRow = async (req, res) => {
 };
 // -------Delete a spot from a row
 // Delete a spot
+
 export const deleteSpot = async (req, res) => {
   try {
     const { parkingLotId, floorId, rowId, spotId } = req.params;
@@ -2086,52 +2187,53 @@ export const deleteSpot = async (req, res) => {
     const parkingLotResponse = await API.get(`/parkingLots/${parkingLotId}.json`);
     const parkingLotData = parkingLotResponse.data;
 
-    // Check if the parking lot exists
     if (!parkingLotData) {
       return res.status(404).json({ error: 'Parking lot not found' });
     }
 
-    // Find the floor
     const floor = parkingLotData.floors.find(f => f.floorId === parseInt(floorId));
     if (!floor) {
       return res.status(404).json({ error: 'Floor not found' });
     }
 
-    // Find the row
     const row = floor.rows.find(r => r.rowId === rowId);
     if (!row) {
       return res.status(404).json({ error: 'Row not found' });
     }
 
-    // Find the spot
     const spot = row.spots.find(s => s.spotId === spotId);
     if (!spot) {
       return res.status(404).json({ error: 'Spot not found' });
     }
 
-    // If spot has a device, update the device's spots array
-    if (spot.deviceId) {
-      const deviceResponse = await API.get(`/device/${spot.deviceId}.json`);
-      const deviceData = deviceResponse.data;
+    // Get the spot type for availability update
+    const spotType = spot.type;
 
-      if (deviceData) {
-        // Remove this spot from device's spots array
-        const updatedSpots = deviceData.spots.filter(s => s !== spotId);
-        
-        // If it was the only spot, remove location info too
-        if (updatedSpots.length === 0) {
-          await API.patch(`/device/${spot.deviceId}.json`, {
-            spots: [],
-            parkingLotId: null,
-            floorId: null,
-            rowId: null
-          });
-        } else {
-          // Otherwise just update the spots array
-          await API.patch(`/device/${spot.deviceId}.json`, {
-            spots: updatedSpots
-          });
+    // Handle device if present
+    if (spot.deviceId) {
+      try {
+        const deviceResponse = await API.get(`/device/${spot.deviceId}.json`);
+        const deviceData = deviceResponse.data;
+
+        if (deviceData) {
+          const updatedSpots = deviceData.spots.filter(s => s !== spotId);
+          
+          if (updatedSpots.length === 0) {
+            await API.patch(`/device/${spot.deviceId}.json`, {
+              spots: [],
+              parkingLotId: null,
+              floorId: null,
+              rowId: null
+            });
+          } else {
+            await API.patch(`/device/${spot.deviceId}.json`, {
+              spots: updatedSpots
+            });
+          }
         }
+      } catch (error) {
+        console.error('Error updating device:', error);
+        // Continue with spot deletion even if device update fails
       }
     }
 
@@ -2158,6 +2260,25 @@ export const deleteSpot = async (req, res) => {
     await API.patch(`/parkingLots/${parkingLotId}.json`, {
       floors: updatedFloors
     });
+
+    // Only update availableSpots if type is not empty
+    if (spotType && spotType.trim() !== '') {
+      try {
+        // Update availableSpots count
+        const currentCount = parkingLotData.availableSpots?.[spotType] || 0;
+        const updatedAvailableSpots = {
+          ...parkingLotData.availableSpots,
+          [spotType]: Math.max(0, currentCount - 1)
+        };
+
+        await API.patch(`/parkingLots/${parkingLotId}.json`, {
+          availableSpots: updatedAvailableSpots
+        });
+      } catch (error) {
+        console.error('Error updating availability count:', error);
+        // Continue despite availability update error
+      }
+    }
 
     res.status(200).json({
       success: true,
@@ -2340,7 +2461,7 @@ export const deleteDevice = async (req, res) => {
 
 export const addDeviceToSpot = async (req, res) => {
   try {
-    const { parkingLotId, floorId, rowId, spotId } = req.params;
+    const { parkingLotId, floorId, rowId, spotNumber } = req.params;
     const { deviceId, sensorId } = req.body;
 
     // Validate required fields
@@ -2351,6 +2472,15 @@ export const addDeviceToSpot = async (req, res) => {
     if (sensorId === undefined || sensorId === null) {
       return res.status(400).json({ error: 'Sensor ID is required when assigning a device' });
     }
+
+    // Validate spotNumber is a positive integer (since we're using 1-based numbering)
+    const spotNumber1Based = parseInt(spotNumber);
+    if (isNaN(spotNumber1Based) || spotNumber1Based < 1) {
+      return res.status(400).json({ error: 'Spot number must be a positive integer (starting from 1)' });
+    }
+    
+    // Convert from 1-based (user-facing) to 0-based (array index)
+    const spotIndex = spotNumber1Based - 1;
 
     // Validate sensorId value
     if (sensorId !== 0 && sensorId !== 1) {
@@ -2378,11 +2508,16 @@ export const addDeviceToSpot = async (req, res) => {
       return res.status(404).json({ error: 'Row not found' });
     }
 
-    // Find the spot
-    const spot = row.spots.find(s => s.spotId === spotId);
-    if (!spot) {
-      return res.status(404).json({ error: 'Spot not found' });
+    // Check if the spotNumber is valid (within array bounds)
+    if (spotIndex >= row.spots.length) {
+      return res.status(404).json({ 
+        error: `Spot number ${spotNumber1Based} not found. The row only has ${row.spots.length} spots (numbered 1-${row.spots.length}).`
+      });
     }
+
+    // Get the actual spot using the provided index
+    const spot = row.spots[spotIndex];
+    const spotId = spot.spotId;
 
     // Check if spot already has a device
     if (spot.deviceId) {
@@ -2437,8 +2572,8 @@ export const addDeviceToSpot = async (req, res) => {
             if (r.rowId === rowId) {
               return {
                 ...r,
-                spots: r.spots.map(s => {
-                  if (s.spotId === spotId) {
+                spots: r.spots.map((s, index) => {
+                  if (index === spotIndex) {
                     return {
                       ...s,
                       deviceId,
@@ -2475,14 +2610,15 @@ export const addDeviceToSpot = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Device added to spot successfully'
+      message: 'Device added to spot successfully',
+      spotId: spotId,
+      spotNumber: spotNumber1Based
     });
   } catch (error) {
     console.error('Error adding device to spot:', error);
     res.status(500).json({ error: 'Failed to add device to spot' });
   }
 };
-
 //----------removeDevice from a spot
 export const removeDeviceFromSpot = async (req, res) => {
   try {
@@ -2586,3 +2722,212 @@ export const removeDeviceFromSpot = async (req, res) => {
     res.status(500).json({ error: 'Failed to remove device from spot' });
   }
 };
+//------add qr scanner
+export const addQrScanner= async (req, res) => {
+  try {
+    
+    const newScanner = {
+      QrScannerId:null,
+ 
+    };
+
+    const QrScannerResponse = await API.post('/QrScanner.json',newScanner);
+    const QrScannerId = QrScannerResponse.data.name;
+
+   
+    await API.patch(`/QrScanner/${QrScannerId}.json`, {
+      QrScannerId: QrScannerId,
+     
+    });
+
+    res.status(201).json({
+      success: true,
+      QrScannerId,
+    
+    });
+  } catch (error) {
+    console.error('Error adding Qr Scanner:', error);
+    res.status(500).json({ error: 'Failed to add Qr Scanner' });
+  }
+};
+//------- add qr scanner to a parking lot
+export const addQrScannerToParkingLot = async (req, res) => {
+  try {
+    const { QrScannerId, parkingLotId } = req.params;
+    const {type}=req.body;
+    
+    // Validate required parameters
+    if (!QrScannerId || !parkingLotId) {
+      return res.status(400).json({ 
+        error: 'QrScannerId and parkingLotId are required' 
+      });
+    }
+    
+    // Check if the QR scanner exists
+    const scannerResponse = await API.get(`/QrScanner/${QrScannerId}.json`);
+    const scannerData = scannerResponse.data;
+    
+    if (!scannerData) {
+      return res.status(404).json({ error: 'QR scanner not found' });
+    }
+    
+    // Check if the parking lot exists
+    const parkingLotResponse = await API.get(`/parkingLots/${parkingLotId}.json`);
+    const parkingLotData = parkingLotResponse.data;
+    
+    if (!parkingLotData) {
+      return res.status(404).json({ error: 'Parking lot not found' });
+    }
+
+    // Update QR scanner with parking lot reference
+    await API.patch(`/QrScanner/${QrScannerId}.json`, {
+      parkingLotId: parkingLotId,
+      type:type
+    });
+    
+    // Update parking lot with QR scanner reference
+    // First, initialize or get the existing qrScanners array
+    const currentScanners = Array.isArray(parkingLotData.qrScanners) 
+      ? parkingLotData.qrScanners 
+      : [];
+    
+    // Check if the scanner is already in the array
+    if (!currentScanners.includes(QrScannerId)) {
+      const updatedScanners = [...currentScanners, QrScannerId];
+      
+      // Update the parking lot
+      await API.patch(`/parkingLots/${parkingLotId}.json`, {
+        qrScanners: updatedScanners
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      message: 'QR scanner successfully associated with parking lot',
+      QrScannerId,
+      parkingLotId
+    });
+  } catch (error) {
+    console.error('Error associating QR scanner with parking lot:', error);
+    res.status(500).json({ error: 'Failed to associate QR scanner with parking lot' });
+  }
+};
+//------ remove qr scanner from parking lot
+export const removeQrScannerFromParkingLot = async (req, res) => {
+  try {
+    const { QrScannerId } = req.params;
+    
+    // Validate required parameter
+    if (!QrScannerId) {
+      return res.status(400).json({ 
+        error: 'QrScannerId is required' 
+      });
+    }
+    
+    // Check if the QR scanner exists
+    const scannerResponse = await API.get(`/QrScanner/${QrScannerId}.json`);
+    const scannerData = scannerResponse.data;
+    
+    if (!scannerData) {
+      return res.status(404).json({ error: 'QR scanner not found' });
+    }
+    
+    // Check if QR scanner is associated with any parking lot
+    if (!scannerData.parkingLotId) {
+      return res.status(400).json({ 
+        error: 'QR scanner is not associated with any parking lot' 
+      });
+    }
+
+    // Store the previous parking lot ID for updates and response
+    const parkingLotId = scannerData.parkingLotId;
+
+    // Get the parking lot data
+    const parkingLotResponse = await API.get(`/parkingLots/${parkingLotId}.json`);
+    const parkingLotData = parkingLotResponse.data;
+
+    // Remove scanner reference from parking lot if parking lot exists
+    if (parkingLotData && parkingLotData.qrScanners) {
+      const updatedScanners = parkingLotData.qrScanners.filter(
+        scannerId => scannerId !== QrScannerId
+      );
+      
+      // Update the parking lot
+      await API.patch(`/parkingLots/${parkingLotId}.json`, {
+        qrScanners: updatedScanners
+      });
+    }
+
+    // Remove parking lot reference from scanner
+    await API.patch(`/QrScanner/${QrScannerId}.json`, {
+      parkingLotId: null
+    });
+    
+    res.status(200).json({
+      success: true,
+      message: 'QR scanner successfully removed from parking lot',
+      QrScannerId,
+      previousParkingLotId: parkingLotId
+    });
+  } catch (error) {
+    console.error('Error removing QR scanner from parking lot:', error);
+    res.status(500).json({ error: 'Failed to remove QR scanner from parking lot' });
+  }
+};
+
+//--------Delete Qr Scanner
+
+export const deleteQrScanner = async (req, res) => {
+  try {
+    const { QrScannerId } = req.params;
+    
+    // Validate required parameter
+    if (!QrScannerId) {
+      return res.status(400).json({ 
+        error: 'QrScannerId is required' 
+      });
+    }
+    
+    // Check if the QR scanner exists
+    const scannerResponse = await API.get(`/QrScanner/${QrScannerId}.json`);
+    const scannerData = scannerResponse.data;
+    
+    if (!scannerData) {
+      return res.status(404).json({ error: 'QR scanner not found' });
+    }
+    
+    // Check if QR scanner is associated with a parking lot
+    if (scannerData.parkingLotId) {
+      const parkingLotId = scannerData.parkingLotId;
+      
+      // Get the parking lot data
+      const parkingLotResponse = await API.get(`/parkingLots/${parkingLotId}.json`);
+      const parkingLotData = parkingLotResponse.data;
+      
+      // Remove scanner reference from parking lot if parking lot exists
+      if (parkingLotData && parkingLotData.qrScanners) {
+        const updatedScanners = parkingLotData.qrScanners.filter(
+          scannerId => scannerId !== QrScannerId
+        );
+        
+        // Update the parking lot
+        await API.patch(`/parkingLots/${parkingLotId}.json`, {
+          qrScanners: updatedScanners
+        });
+      }
+    }
+    
+    // Delete the QR scanner
+    await API.delete(`/QrScanner/${QrScannerId}.json`);
+    
+    res.status(200).json({
+      success: true,
+      message: 'QR scanner successfully deleted',
+      QrScannerId
+    });
+  } catch (error) {
+    console.error('Error deleting QR scanner:', error);
+    res.status(500).json({ error: 'Failed to delete QR scanner' });
+  }
+};
+
