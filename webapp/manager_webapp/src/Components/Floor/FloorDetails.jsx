@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { createRow, getFloorRows } from "../../backend/apiFunction";
+import { createRow, getFloorRows, getRowSpots } from "../../backend/apiFunction";
 import RowCard from "../Cards/RowCard/RowCard";
 import "./FloorDetails.css";
 
@@ -20,13 +20,21 @@ const FloorDetails = () => {
   const fetchRows = async () => {
     try {
       const floorRows = await getFloorRows(parkingLotId, floorId);
-
+  
       if (!floorRows) {
         setFloorExists(false);
         return;
       }
-
-      setRows(floorRows);
+  
+      // Fetch spot count for each row
+      const rowsWithSpotCount = await Promise.all(
+        floorRows.map(async (row) => {
+          const spots = await getRowSpots(parkingLotId, floorId, row.rowId);
+          return { ...row, spotCount: spots.length };
+        })
+      );
+  
+      setRows(rowsWithSpotCount);
     } catch (err) {
       console.error("Error fetching rows:", err);
       setError("Failed to fetch rows.");
@@ -34,6 +42,7 @@ const FloorDetails = () => {
       setLoading(false);
     }
   };
+  
 
   const handleManageSpots = (rowId) => {
     navigate(`/parkinglot/${parkingLotId}/floor/${floorId}/row/${rowId}/spots`);
@@ -74,12 +83,13 @@ const FloorDetails = () => {
       <div className="rows-container">
         {rows.length > 0 ? (
           rows.map((row) => (
-            <RowCard key={row.rowId} row={row} onManageSpots={handleManageSpots} />
+            <RowCard key={row.rowId} row={row} spotCount={row.spotCount} onManageSpots={handleManageSpots} />
           ))
         ) : (
           <div className="no-rows-message">No rows found.</div>
         )}
       </div>
+
 
       <div className="floor-actions-container">
         <button className="floor-add-row-button" onClick={handleAddRow} disabled={addingRow}>
