@@ -118,7 +118,12 @@ export const updateParkingLot = async (parkingLotId, updateData) => {
 export const deleteParkingLot = async (managerId, parkingLotId) => {
   try {
     const managerResponse = await API.get(`/managers/${managerId}.json`);
-    const updatedParkingLots = (managerResponse.data.parkingLots || []).filter(id => id !== parkingLotId);
+
+    if (!managerResponse.data || !managerResponse.data.parkingLots) {
+      throw new Error("Manager data is missing or invalid.");
+    }
+
+    const updatedParkingLots = managerResponse.data.parkingLots.filter(id => id !== parkingLotId);
 
     await API.patch(`/managers/${managerId}.json`, { parkingLots: updatedParkingLots });
     await API.delete(`/parkingLots/${parkingLotId}.json`);

@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react"
+import { useAuth } from "../../backend/config/contexts/authContext";
 import { useParams, useNavigate } from "react-router-dom";
-import { deleteParkingLot, updateParkingLot, createFloor, getParkingLotInfo, getFloors } from "../../backend/apiFunction";
+import { deleteParkingLot, updateParkingLot, createFloor, getParkingLotInfo, getFloors, getParkingLot } from "../../backend/apiFunction";
 import "./ParkingLot.css";
 
 const ParkingLot = () => {
@@ -103,13 +104,17 @@ const ParkingLot = () => {
     }
   };
 
+  const { currentUser } = useAuth();
   const handleDeleteParkingLot = async () => {
     if (window.confirm("Are you sure you want to delete this parking lot?")) {
       try {
-        const managerId = parkingLot.managerId; 
-        await deleteParkingLot(managerId, parkingLot.id);
+        if (!currentUser) {
+          throw new Error("No manager is logged in.");
+        }
+  
+        await deleteParkingLot(currentUser.uid, parkingLot.id); // Use currentUser.uid for managerId
         alert("Parking lot deleted successfully!");
-        navigate("/parking-list"); 
+        navigate("/parking-list");
       } catch (error) {
         console.error("Error deleting parking lot:", error);
         setError("Failed to delete parking lot.");
