@@ -51,12 +51,7 @@ const AppContent = () => {
             <Home />
           </ProtectedRoute>
         } />
-        <Route path="/crud" element={
-          <ProtectedRoute>
-            <CRUD />
-          </ProtectedRoute>
-        } />
-          <Route path="/crud/lotId" element={
+          <Route path="/crud/:lotId" element={
           <ProtectedRoute>
             <CRUD />
           </ProtectedRoute>

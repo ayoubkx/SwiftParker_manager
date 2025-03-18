@@ -57,6 +57,15 @@ const ParkingLots = () => {
       console.error("Error fetching parking lot details:", error);
     }
   };
+
+  const handleCRUD = async (lotId) => {
+    try {
+      const parkingLotInfo = await getParkingLot(lotId);
+      navigate(`/crud/${lotId}`, { state: { parkingLot: parkingLotInfo } });
+    } catch (error) {
+      console.error("Error fetching parking lot details:", error);
+    }
+  };
   
 
   const handleAddParkingLot = () => {
@@ -213,7 +222,7 @@ const ParkingLots = () => {
       <div className="parking-lots-grid">
         {parkingLots.length > 0 ? (
           parkingLots.map((lot) => (
-            <LotCard key={lot.id} lot={lot} onManageLot={handleManageLot} />
+            <LotCard key={lot.id} lot={lot} onManageLot={handleManageLot} onCRUD={handleCRUD} />
           ))
         ) : (
           <div className="no-lots-message">No parking lots found.</div>
