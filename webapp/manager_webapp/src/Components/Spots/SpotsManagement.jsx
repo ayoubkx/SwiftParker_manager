@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
+import { createSpot, updateSpot } from "../../backend/apiFunction";
 import API from "../../backend/api";
 import "./SpotsManagement.css";
 
@@ -60,68 +61,25 @@ const SpotsManagement = () => {
   }, [parkingLotId, floorId, rowId]);
 
   const handleAddSpot = async () => {
+    if (!newSpot.type) {
+      alert("Please select a valid spot type.");
+      return;
+    }
+  
     try {
-      // Fetch the current parking lot data
-      const response = await API.get(`/parkingLots/${parkingLotId}.json`);
-      const parkingLotData = response.data;
+      const response = await createSpot(parkingLotId, floorId, rowId, newSpot);
   
-      if (!parkingLotData) {
-        setError("Parking lot not found.");
-        return;
+      if (response && response.spotId) {
+        setSpots([...spots, { ...newSpot, spotId: response.spotId }]);
+        setNewSpot({ type: "", status: "available", isReserved: false });
+        setShowAddForm(false);
       }
-  
-      // Find the correct floor
-      const floorIndex = parkingLotData.floors.findIndex((f) => f.floorId === parseInt(floorId));
-      if (floorIndex === -1) {
-        setError("Floor not found.");
-        return;
-      }
-  
-      // Ensure rows is an array
-      let rowsArray = Array.isArray(parkingLotData.floors[floorIndex].rows)
-        ? parkingLotData.floors[floorIndex].rows
-        : Object.values(parkingLotData.floors[floorIndex].rows || {});
-  
-      // Find the correct row
-      const rowIndex = rowsArray.findIndex((r) => r.rowId === rowId);
-      if (rowIndex === -1) {
-        setError("Row not found.");
-        return;
-      }
-  
-      // Ensure spots exist
-      const existingSpots = rowsArray[rowIndex].spots || [];
-  
-      // Generate a unique spotId
-      const newSpotId = `SPOT-${Math.random().toString(36).substr(2, 8)}`;
-  
-      // Create new spot object
-      const spotData = {
-        ...newSpot,
-        spotId: newSpotId,
-      };
-  
-      // Add new spot to the row
-      existingSpots.push(spotData);
-      rowsArray[rowIndex].spots = existingSpots;
-  
-      // Update the entire floor structure in Firebase
-      parkingLotData.floors[floorIndex].rows = rowsArray;
-  
-      // Save updated parking lot back to Firebase
-      await API.patch(`/parkingLots/${parkingLotId}.json`, {
-        floors: parkingLotData.floors,
-      });
-  
-      // Update UI
-      setSpots(existingSpots);
-      setNewSpot({ type: "", status: "available", isReserved: false });
-      setShowAddForm(false);
     } catch (error) {
       console.error("Error adding spot:", error);
       setError("Failed to add spot.");
     }
   };
+  
   
   const handleEditSpot = (spot) => {
     setEditingSpot(spot);
@@ -129,35 +87,17 @@ const SpotsManagement = () => {
 
   const handleUpdateSpot = async () => {
     try {
-      const response = await API.patch(
-        `/parkingLots/${parkingLotId}/floors/${floorId}/rows/${rowId}/spots/${editingSpot.spotId}.json`,
-        editingSpot
+      await updateSpot(parkingLotId, floorId, rowId, editingSpot.spotId, editingSpot);
+  
+      setSpots(
+        spots.map((spot) =>
+          spot.spotId === editingSpot.spotId ? editingSpot : spot
+        )
       );
-
-      if (response.data) {
-        setSpots(
-          spots.map((spot) =>
-            spot.spotId === editingSpot.spotId ? editingSpot : spot
-          )
-        );
-        setEditingSpot(null);
-      }
+      setEditingSpot(null);
     } catch (error) {
       console.error("Error updating spot:", error);
       setError("Failed to update spot.");
-    }
-  };
-
-  const handleDeleteSpot = async (spotId) => {
-    try {
-      await API.delete(
-        `/parkingLots/${parkingLotId}/floors/${floorId}/rows/${rowId}/spots/${spotId}.json`
-      );
-
-      setSpots(spots.filter((spot) => spot.spotId !== spotId));
-    } catch (error) {
-      console.error("Error deleting spot:", error);
-      setError("Failed to delete spot.");
     }
   };
 
@@ -198,12 +138,6 @@ const SpotsManagement = () => {
                   onClick={() => handleEditSpot(spot)}
                 >
                   Edit
-                </button>
-                <button
-                  className="spots-management-delete-button"
-                  onClick={() => handleDeleteSpot(spot.spotId)}
-                >
-                  Delete
                 </button>
               </td>
             </tr>
@@ -253,7 +187,9 @@ const SpotsManagement = () => {
             />
           </label>
           <div className="spots-management-form-buttons">
-            <button onClick={handleAddSpot}>Add</button>
+            {newSpot.type && (
+              <button onClick={handleAddSpot}>Add</button>
+            )}
             <button
               onClick={() => setShowAddForm(false)}
               className="spots-management-close-button"

@@ -380,74 +380,85 @@ export const getFloorRows = async (parkingLotId, floorId) => {
 // ---------------------- SPOT MANAGEMENT ----------------------
 // Create a new spot
 export const createSpot = async (parkingLotId, floorId, rowId, spotData) => {
-    try {
-      const { type, isReserved } = spotData;
-  
-      const response = await API.get(`/parkingLots/${parkingLotId}.json`);
-      const parkingLotData = response.data;
-  
-      if (!parkingLotData) {
-        throw new Error('Parking lot not found');
-      }
-  
-      const floor = parkingLotData.floors.find((f) => f.floorId === parseInt(floorId));
-      if (!floor) {
-        throw new Error('Floor not found');
-      }
-  
-      const row = floor.rows.find((r) => r.rowId === rowId);
-      if (!row) {
-        throw new Error('Row not found');
-      }
-  
-      // Ensure spots is always an array
-      if (!row.spots) {
-        row.spots = [];
-      }
-  
-      // Generate a unique spot ID
-      const spotId = `SPOT-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-  
-      const newSpot = {
-        spotId,
-        type,
-        isReserved: isReserved || false,
-        status: 'available',
-      };
-  
-      // Update only the targeted row
-      const updatedRows = floor.rows.map((r) =>
-        r.rowId === rowId ? { ...r, spots: [...r.spots, newSpot] } : r
-      );
-  
-      // Update available spots count
-      const updatedAvailableSpots = {
-        ...parkingLotData.availableSpots,
-        [type]: (parkingLotData.availableSpots?.[type] || 0) + 1,
-      };
-  
-      // Patch only the modified floor
-      await API.patch(`/parkingLots/${parkingLotId}/floors/${floorId}.json`, { rows: updatedRows });
-  
-      // Update available spots separately
-      await API.patch(`/parkingLots/${parkingLotId}.json`, {
-        availableSpots: updatedAvailableSpots,
-      });
-  
-      return { success: true, spotId };
-    } catch (error) {
-      console.error('Error adding spot:', error);
-      throw error;
+  try {
+    const { type, isReserved, status } = spotData;
+
+    const response = await API.get(`/parkingLots/${parkingLotId}.json`);
+    const parkingLotData = response.data;
+
+    if (!parkingLotData) {
+      throw new Error('Parking lot not found');
     }
-  };  
+
+    const floor = parkingLotData.floors.find((f) => f.floorId === parseInt(floorId));
+    if (!floor) {
+      throw new Error('Floor not found');
+    }
+
+    const row = floor.rows.find((r) => r.rowId === rowId);
+    if (!row) {
+      throw new Error('Row not found');
+    }
+
+    // Ensure spots is always an array
+    if (!row.spots) {
+      row.spots = [];
+    }
+
+    // Generate a unique spot ID
+    const spotId = `SPOT-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+
+    const newSpot = {
+      spotId,
+      type,
+      isReserved: isReserved || false,
+      status: status || "available", // Default status is available
+    };
+
+    // Update only the targeted row
+    const updatedRows = floor.rows.map((r) =>
+      r.rowId === rowId ? { ...r, spots: [...r.spots, newSpot] } : r
+    );
+
+    // Update available spots count only if the spot is "available"
+    const updatedAvailableSpots = { ...parkingLotData.availableSpots };
+    if (newSpot.status === "available") {
+      updatedAvailableSpots[type] = (updatedAvailableSpots?.[type] || 0) + 1;
+    }
+
+    // Patch only the modified floor
+    await API.patch(`/parkingLots/${parkingLotId}/floors/${floorId}.json`, { rows: updatedRows });
+
+    // Update available spots separately
+    await API.patch(`/parkingLots/${parkingLotId}.json`, {
+      availableSpots: updatedAvailableSpots,
+    });
+
+    return { success: true, spotId };
+  } catch (error) {
+    console.error('Error adding spot:', error);
+    throw error;
+  }
+};
+
 
 // Update a spot
 export const updateSpot = async (parkingLotId, floorId, rowId, spotId, updateData) => {
   try {
     const response = await API.get(`/parkingLots/${parkingLotId}.json`);
     if (!response.data) throw new Error('Parking lot not found.');
+    const parkingLotData = response.data;
+    
+    // Find the floor, row, and old spot data
+    const floor = parkingLotData.floors.find(f => f.floorId === parseInt(floorId));
+    if (!floor) throw new Error('Floor not found.');
+    const row = floor.rows.find(r => r.rowId === rowId);
+    if (!row) throw new Error('Row not found.');
+    const oldSpot = row.spots.find(s => s.spotId === spotId);
+    if (!oldSpot) throw new Error('Spot not found.');
 
-    const updatedFloors = response.data.floors.map(f =>
+    // Update the spot in the floors data
+    const updatedFloors = parkingLotData.floors.map(f =>
       f.floorId === parseInt(floorId)
         ? {
             ...f,
@@ -465,7 +476,32 @@ export const updateSpot = async (parkingLotId, floorId, rowId, spotId, updateDat
         : f
     );
 
-    await API.patch(`/parkingLots/${parkingLotId}.json`, { floors: updatedFloors });
+    // Merge the updateData into oldSpot to get the new spot state
+    const newSpot = { ...oldSpot, ...updateData };
+
+    // Calculate new available spots counts.
+    // We assume that "available" means spot.status === "available"
+    const availableSpots = parkingLotData.availableSpots || { EV: 0, general: 0, handicapped: 0, subscription: 0 };
+    const updatedAvailableSpots = { ...availableSpots };
+
+    // Determine availability: 1 if status is "available", otherwise 0.
+    const oldAvailable = (oldSpot.status === "available") ? 1 : 0;
+    const newAvailable = (newSpot.status === "available") ? 1 : 0;
+
+    if (oldSpot.type === newSpot.type) {
+      // For the same type, adjust the count by subtracting old and adding new.
+      updatedAvailableSpots[newSpot.type] = (availableSpots[newSpot.type] || 0) - oldAvailable + newAvailable;
+    } else {
+      // If the type has changed, subtract from the old type and add to the new type.
+      updatedAvailableSpots[oldSpot.type] = (availableSpots[oldSpot.type] || 0) - oldAvailable;
+      updatedAvailableSpots[newSpot.type] = (availableSpots[newSpot.type] || 0) + newAvailable;
+    }
+
+    // Patch the updated floors and availableSpots to Firebase
+    await API.patch(`/parkingLots/${parkingLotId}.json`, {
+      floors: updatedFloors,
+      availableSpots: updatedAvailableSpots,
+    });
 
     return { success: true };
   } catch (error) {
