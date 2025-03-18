@@ -152,6 +152,39 @@ export const getFloorSpots = async (parkingLotId, floorId) => {
   };
 
 
+// ---- Get all spot informations for a specific row
+export const getRowSpots = async (parkingLotId, floorId, rowId) => {
+  try {
+    const parkingLotResponse = await API.get(`/parkingLots/${parkingLotId}.json`);
+    const parkingLotData = parkingLotResponse.data;
+
+    if (!parkingLotData) {
+      throw new Error('Parking lot not found');
+    }
+
+    const floor = parkingLotData.floors.find(f => f.floorId === parseInt(floorId));
+
+    if (!floor) {
+      throw new Error(`Floor ${floorId} not found`);
+    }
+
+    // ✅ Ensure rowId is correct ("R1")
+    const row = floor.rows.find(r => r.rowId === rowId);
+
+    if (!row) {
+      throw new Error(`Row ${rowId} not found`);
+    }
+    const spotIndexesAsStrings = row.spots.map((_, index) => index.toString());
+
+    return spotIndexesAsStrings;
+  } catch (error) {
+    console.error('Error getting row spots:', error);
+    throw error;
+  }
+};
+
+
+
   //---------add Device 
 export const addDevice = async () => {
   try {

@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react"
+import { useAuth } from "../../backend/config/contexts/authContext";
 import { useParams, useNavigate } from "react-router-dom";
-import API from "../../backend/api";
+import { deleteParkingLot, updateParkingLot, createFloor, getParkingLotInfo, getFloors } from "../../backend/apiFunction";
 import "./ParkingLot.css";
 
 const ParkingLot = () => {
@@ -26,24 +27,24 @@ const ParkingLot = () => {
   useEffect(() => {
     const fetchParkingLot = async () => {
       try {
-        const response = await API.get(`/parkingLots/${lotId}.json`);
-        if (response.data) {
-          setParkingLot({ id: lotId, ...response.data });
-          setFormData({
-            name: response.data.name,
-            location: response.data.location,
-            phoneNumber: response.data.phoneNumber || "",
-            hourlyRateWeekday: response.data.hourlyRateWeekday || "",
-            dailyRateWeekday: response.data.dailyRateWeekday || "",
-            hourlyRateWeekend: response.data.hourlyRateWeekend || "",
-            dailyRateWeekend: response.data.dailyRateWeekend || "",
-            subscriptionRate: response.data.subscriptionRate || "",
-            availableSpots: response.data.availableSpots || { EV: 0, general: 0, handicapped: 0, subscription: 0 },
-            floors: response.data.floors || [],
-          });
-        } else {
-          setError("Parking lot not found.");
-        }
+        const parkingLotData = await getParkingLotInfo(lotId);
+        setParkingLot({ id: lotId, ...parkingLotData });
+
+        // Fetch floors data
+        const floorsData = await getFloors(lotId);
+
+        setFormData({
+          name: parkingLotData.name,
+          location: parkingLotData.location,
+          phoneNumber: parkingLotData.phoneNumber || "",
+          hourlyRateWeekday: parkingLotData.hourlyRateWeekday || "",
+          dailyRateWeekday: parkingLotData.dailyRateWeekday || "",
+          hourlyRateWeekend: parkingLotData.hourlyRateWeekend || "",
+          dailyRateWeekend: parkingLotData.dailyRateWeekend || "",
+          subscriptionRate: parkingLotData.subscriptionRate || "",
+          availableSpots: parkingLotData.availableSpots,
+          floors: floorsData || [], 
+        });
       } catch (err) {
         console.error("Error fetching parking lot:", err);
         setError("Failed to load parking lot details.");
@@ -55,6 +56,7 @@ const ParkingLot = () => {
     fetchParkingLot();
   }, [lotId]);
 
+
   const handleManageFloor = (floorId) => {
     navigate(`/parking-lot/${parkingLot.id}/floor/${floorId}`);
   };
@@ -64,20 +66,23 @@ const ParkingLot = () => {
     setFormData((prevData) => ({ ...prevData, [name]: value }));
   };
 
-  const handleSpotChange = (e, type) => {
-    const value = parseInt(e.target.value) || 0;
-    setFormData((prevData) => ({
-      ...prevData,
-      availableSpots: { ...prevData.availableSpots, [type]: value },
-    }));
-  };
+  const handleAddFloor = async () => {
+    try {
+      await createFloor(parkingLot.id);
+      
+      // Fetch updated floors list
+      const updatedFloors = await getFloors(parkingLot.id);
 
-  const handleAddFloor = () => {
-    const newFloorId = formData.floors.length;
-    setFormData((prevData) => ({
-      ...prevData,
-      floors: [...prevData.floors, { floorId: newFloorId, rows: [] }],
-    }));
+      setFormData((prevData) => ({
+        ...prevData,
+        floors: updatedFloors || [],
+      }));
+
+      alert("New floor added successfully!");
+    } catch (error) {
+      console.error("Error adding new floor:", error);
+      setError("Failed to add new floor.");
+    }
   };
 
   const handleSaveChanges = async () => {
@@ -91,7 +96,7 @@ const ParkingLot = () => {
         subscriptionRate: parseFloat(formData.subscriptionRate) || 0,
       };
 
-      await API.patch(`/parkingLots/${lotId}.json`, updatedData);
+      await updateParkingLot(parkingLot.id, updatedData);
       alert("Parking lot details updated successfully!");
     } catch (error) {
       console.error("Error updating parking lot:", error);
@@ -99,6 +104,28 @@ const ParkingLot = () => {
     }
   };
 
+  const { currentUser } = useAuth();
+  const handleDeleteParkingLot = async () => {
+    if (window.confirm("Are you sure you want to delete this parking lot?")) {
+      try {
+        if (!currentUser) {
+          throw new Error("No manager is logged in.");
+        }
+  
+        await deleteParkingLot(currentUser.uid, parkingLot.id); // Use currentUser.uid for managerId
+        alert("Parking lot deleted successfully!");
+        navigate("/parking-list");
+      } catch (error) {
+        console.error("Error deleting parking lot:", error);
+        setError("Failed to delete parking lot.");
+      }
+    }
+  };
+
+  const getTotalSpots = (type) => {
+    return formData.availableSpots?.[type] || 0;
+  };
+  
   if (loading) return <div className="loading-message">Loading parking lot details...</div>;
   if (error) return <div className="error-message">{error}</div>;
 
@@ -148,10 +175,10 @@ const ParkingLot = () => {
           <tr>
             <td>Available Spots</td>
             <td>
-              <label>General: <input type="number" value={formData.availableSpots.general} onChange={(e) => handleSpotChange(e, "general")} /></label>
-              <label>EV: <input type="number" value={formData.availableSpots.EV} onChange={(e) => handleSpotChange(e, "EV")} /></label>
-              <label>Handicapped: <input type="number" value={formData.availableSpots.handicapped} onChange={(e) => handleSpotChange(e, "handicapped")} /></label>
-              <label>Subscription: <input type="number" value={formData.availableSpots.subscription} onChange={(e) => handleSpotChange(e, "subscription")} /></label>
+              <div>Total General Spots: {getTotalSpots("general")}</div>
+              <div>Total EV Spots: {getTotalSpots("EV")}</div>
+              <div>Total Handicapped Spots: {getTotalSpots("handicapped")}</div>
+              <div>Total Subscription Spots: {getTotalSpots("subscription")}</div>
             </td>
           </tr>
           <tr>
@@ -172,7 +199,10 @@ const ParkingLot = () => {
           </tr>
         </tbody>
       </table>
-      <button className="save-button" onClick={handleSaveChanges}>Save Changes</button>
+      <div className="button-container">
+        <button className="save-button" onClick={handleSaveChanges}>Save Changes</button>
+        <button className="delete-button" onClick={handleDeleteParkingLot}>Delete Parking Lot</button>
+      </div>
     </div>
   );
 };

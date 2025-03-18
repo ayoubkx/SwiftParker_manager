@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import LotCard from "../Cards/LotCard/LotCard";
-import API from "../../backend/api";
+import { createParkingLot, createFloor, createRow, createSpot, getManagerParkingLots, getParkingLot } from "../../backend/apiFunction";
 import { useAuth } from "../../backend/config/contexts/authContext";
 import "./ParkingLots.css";
+import 'react-phone-number-input/style.css';
+import PhoneInput from 'react-phone-number-input';
 
 const ParkingLots = () => {
   const navigate = useNavigate();
@@ -21,6 +23,8 @@ const ParkingLots = () => {
     dailyRateWeekend: "",
     subscriptionRate: "",
     phoneNumber: "",
+    floors: 0,
+    floorData: [],
   });
 
   useEffect(() => {
@@ -29,32 +33,10 @@ const ParkingLots = () => {
         if (!currentUser) {
           throw new Error("No manager is logged in.");
         }
-
-        const response = await API.get(`/managers/${currentUser.uid}/parkingLots.json`);
-        const parkingLotIds = response.data || [];
-
-        const validParkingLotIds = parkingLotIds.filter((id) => id !== null && typeof id === "string");
-
-        if (validParkingLotIds.length === 0) {
-          setParkingLots([]);
-          setLoading(false);
-          return;
-        }
-
-        const parkingLotsData = await Promise.all(
-          validParkingLotIds.map(async (id) => {
-            const lotResponse = await API.get(`/parkingLots/${id}.json`);
-            if (lotResponse.data) {
-              return {
-                id,
-                ...lotResponse.data,
-              };
-            }
-            return null;
-          })
-        );
-
-        setParkingLots(parkingLotsData.filter((lot) => lot !== null));
+    
+        const parkingLotsData = await getManagerParkingLots(currentUser.uid);
+    
+        setParkingLots(parkingLotsData);
       } catch (err) {
         console.error("Error fetching parking lots:", err);
         setError("Failed to fetch parking lots. Please try again later.");
@@ -62,13 +44,38 @@ const ParkingLots = () => {
         setLoading(false);
       }
     };
+    
 
     fetchParkingLots();
   }, [currentUser]);
 
-  const handleManageLot = (lotId) => {
-    navigate(`/parkinglot/${lotId}`);
+  const handleManageLot = async (lotId) => {
+    try {
+      const parkingLotInfo = await getParkingLot(lotId);
+      navigate(`/parkinglot/${lotId}`, { state: { parkingLot: parkingLotInfo } });
+    } catch (error) {
+      console.error("Error fetching parking lot details:", error);
+    }
   };
+
+  const handleCRUD = async (lotId) => {
+    try {
+      const parkingLotInfo = await getParkingLot(lotId);
+      navigate(`/crud/${lotId}`, { state: { parkingLot: parkingLotInfo } });
+    } catch (error) {
+      console.error("Error fetching parking lot details:", error);
+    }
+  };
+
+  const handleParkingLogs = async (lotId) => {
+    try {
+      const parkingLotInfo = await getParkingLot(lotId);
+      navigate(`/parkinglog/${lotId}`, { state: { parkingLot: parkingLotInfo } });
+    } catch (error) {
+      console.error("Error fetching parking lot details:", error);
+    }
+  };
+  
 
   const handleAddParkingLot = () => {
     setShowForm(true);
@@ -76,79 +83,153 @@ const ParkingLots = () => {
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
+  
+    // Handle phone number separately using PhoneInput
+    if (name === "phoneNumber") {
+      setFormData((prevData) => ({
+        ...prevData,
+        phoneNumber: value, // PhoneInput handles formatting, so we set the value directly
+      }));
+      return;
+    }
+  
+    // Prevent negative values for rate fields
+    if (
+      name === "hourlyRateWeekday" ||
+      name === "dailyRateWeekday" ||
+      name === "hourlyRateWeekend" ||
+      name === "dailyRateWeekend" ||
+      name === "subscriptionRate"
+    ) {
+      const parsedValue = parseFloat(value);
+      if (parsedValue < 0) {
+        // If the value is negative, set it to 0
+        setFormData((prevData) => ({
+          ...prevData,
+          [name]: 0,
+        }));
+        return;
+      }
+    }
+  
+    // Handle floors separately
+    if (name === "floors") {
+      const updatedFloorData = Array.from({ length: Number(value) }, () => ({
+        rowsPerFloor: 0,
+        rowData: [],
+      }));
+      setFormData((prevData) => ({
+        ...prevData,
+        floors: Number(value),
+        floorData: updatedFloorData,
+      }));
+      return;
+    }
+  
+    // Update other fields
+    setFormData((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }));
+  };
+  
+  
+  const handlePhoneChange = (value) => {
+    setFormData((prevData) => ({
+      ...prevData,
+      phoneNumber: value,
+    }));
+  };
+  
+
+
+  const handleFloorChange = (index, e) => {
+    const { name, value } = e.target;
+    const updatedFloorData = [...formData.floorData];
+    updatedFloorData[index][name] = value;
+
+    if (name === "rowsPerFloor") {
+      const updatedRowData = Array.from({ length: value }, () => ({
+        generalSpotsPerRow: 0,
+        handicappedSpotsPerRow: 0,
+        evSpotsPerRow: 0,
+        subscriptionSpotsPerRow: 0,
+      }));
+      updatedFloorData[index].rowData = updatedRowData;
+    }
+
     setFormData({
       ...formData,
-      [name]: value,
+      floorData: updatedFloorData,
     });
   };
 
+  const handleRowChange = (floorIndex, rowIndex, e) => {
+    const { name, value } = e.target;
+    const updatedFloorData = [...formData.floorData];
+    updatedFloorData[floorIndex].rowData[rowIndex][name] = value;
+    setFormData({
+      ...formData,
+      floorData: updatedFloorData,
+    });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Step 1: Get latitude and longitude using OpenStreetMap geocoding
-      const geoResponse = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formData.location)}`
-      );
-      const geoData = await geoResponse.json();
+      const parkingLotData = {
+        name: formData.name,
+        location: formData.location,
+        hourlyRateWeekday: parseFloat(formData.hourlyRateWeekday) || 0,
+        dailyRateWeekday: parseFloat(formData.dailyRateWeekday) || 0,
+        hourlyRateWeekend: parseFloat(formData.hourlyRateWeekend) || 0,
+        dailyRateWeekend: parseFloat(formData.dailyRateWeekend) || 0,
+        subscriptionRate: parseFloat(formData.subscriptionRate) || 0,
+        phoneNumber: formData.phoneNumber,
+      };
   
-      if (!geoData || geoData.length === 0) {
-        setError("Unable to find location. Please check the address.");
-        return;
+      const { parkingLotId } = await createParkingLot(currentUser.uid, parkingLotData);
+  
+      for (let floorIndex = 0; floorIndex < formData.floors; floorIndex++) {
+        const { floorId } = await createFloor(parkingLotId);
+  
+        for (let rowIndex = 0; rowIndex < formData.floorData[floorIndex].rowsPerFloor; rowIndex++) {
+          const rowId = `R${floorIndex}${rowIndex}`;
+          await createRow(parkingLotId, floorId, rowId);
+  
+          const rowData = formData.floorData[floorIndex].rowData[rowIndex];
+          const spotTypes = [
+            { type: "general", count: rowData.generalSpotsPerRow },
+            { type: "handicapped", count: rowData.handicappedSpotsPerRow },
+            { type: "EV", count: rowData.evSpotsPerRow },
+            { type: "subscription", count: rowData.subscriptionSpotsPerRow },
+          ];
+  
+          for (const spotType of spotTypes) {
+            for (let i = 0; i < spotType.count; i++) {
+              await createSpot(parkingLotId, floorId, rowId, { type: spotType.type, isReserved: false });
+            }
+          }
+        }
       }
-  
-      const firstResult = geoData[0];
-      const latitude = parseFloat(firstResult.lat);
-      const longitude = parseFloat(firstResult.lon);
-      const formattedLocation = firstResult.display_name;
-  
-      // Step 2: Send the request to add the parking lot
-      const response = await API.post("/parkingLots.json", {
-        ...formData,
-        location: formattedLocation,
-        latitude,
-        longitude,
-        managerId: currentUser.uid,
-        createdAt: new Date().toISOString(),
-        availableSpots: { general: 0, handicapped: 0, EV: 0, subscription: 0 },
+      
+      const updatedParkingLots = await getManagerParkingLots(currentUser.uid);
+      setParkingLots(updatedParkingLots);
+
+
+      setShowForm(false);
+      setFormData({
+        name: "",
+        location: "",
+        hourlyRateWeekday: "",
+        dailyRateWeekday: "",
+        hourlyRateWeekend: "",
+        dailyRateWeekend: "",
+        subscriptionRate: "",
+        phoneNumber: "",
+        floors: 0,
+        floorData: [],
       });
-  
-      const parkingLotId = response.data.name;
-  
-      // Step 3: Update the manager's parking lots list
-      const managerResponse = await API.get(`/managers/${currentUser.uid}.json`);
-      const existingParkingLots = managerResponse.data?.parkingLots || [];
-  
-      await API.patch(`/managers/${currentUser.uid}.json`, {
-        parkingLots: [...existingParkingLots, parkingLotId],
-      });
-  
-      // Step 4: **Fetch fresh data before updating the UI**
-      setTimeout(async () => {
-        const updatedResponse = await API.get(`/managers/${currentUser.uid}/parkingLots.json`);
-        const updatedParkingLotIds = updatedResponse.data || [];
-  
-        const updatedParkingLots = await Promise.all(
-          updatedParkingLotIds.map(async (id) => {
-            const lotResponse = await API.get(`/parkingLots/${id}.json`);
-            return lotResponse.data ? { id, ...lotResponse.data } : null;
-          })
-        );
-  
-        setParkingLots(updatedParkingLots.filter((lot) => lot !== null));
-        setShowForm(false);
-        setFormData({
-          name: "",
-          location: "",
-          hourlyRateWeekday: "",
-          dailyRateWeekday: "",
-          hourlyRateWeekend: "",
-          dailyRateWeekend: "",
-          subscriptionRate: "",
-          phoneNumber: "",
-        });
-      }, 500); 
-  
     } catch (error) {
       console.error("Error adding parking lot:", error);
       setError("Failed to add parking lot. Please try again.");
@@ -156,8 +237,6 @@ const ParkingLots = () => {
   };
   
   
-
-
 
   if (loading) {
     return <div className="loading-message">Loading parking lots...</div>;
@@ -173,7 +252,7 @@ const ParkingLots = () => {
       <div className="parking-lots-grid">
         {parkingLots.length > 0 ? (
           parkingLots.map((lot) => (
-            <LotCard key={lot.id} lot={lot} onManageLot={handleManageLot} />
+            <LotCard key={lot.id} lot={lot} onManageLot={handleManageLot} onCRUD={handleCRUD} onParkingLogs={handleParkingLogs} />
           ))
         ) : (
           <div className="no-lots-message">No parking lots found.</div>
@@ -181,7 +260,7 @@ const ParkingLots = () => {
       </div>
       <div className="add-parking-lot-container">
         <button className="add-parking-lot-button" onClick={handleAddParkingLot}>
-          Add New Parking Lot
+          Set-up Parking Lot
         </button>
       </div>
 
@@ -199,8 +278,15 @@ const ParkingLots = () => {
             </label>
             <label>
               Phone Number:
-              <input type="text" name="phoneNumber" value={formData.phoneNumber} onChange={handleFormChange} />
+              <PhoneInput
+                defaultCountry="CA"
+                international
+                placeholder="Enter phone number"
+                value={formData.phoneNumber}
+                onChange={handlePhoneChange}
+              />
             </label>
+
             <label>
               Hourly Rate (Weekday):
               <input type="number" name="hourlyRateWeekday" value={formData.hourlyRateWeekday} onChange={handleFormChange} />
@@ -221,7 +307,75 @@ const ParkingLots = () => {
               Subscription Rate:
               <input type="number" name="subscriptionRate" value={formData.subscriptionRate} onChange={handleFormChange} />
             </label>
-
+            <label>
+              Floors:
+              <input type="number" name="floors" value={formData.floors} onChange={handleFormChange} min="0" required />
+            </label>
+            {formData.floorData.map((floor, floorIndex) => (
+              <div key={floorIndex} className="floor-section">
+                <h3><strong>Floor {floorIndex + 1}</strong></h3>
+                <label>
+                  Rows per Floor:
+                  <input
+                    type="number"
+                    name="rowsPerFloor"
+                    value={floor.rowsPerFloor}
+                    onChange={(e) => handleFloorChange(floorIndex, e)}
+                    min="0"
+                    required
+                  />
+                </label>
+                {floor.rowData.map((row, rowIndex) => (
+                  <div key={rowIndex} className="row-section">
+                    <h4><strong>Row {rowIndex + 1}</strong></h4>
+                    <label>
+                      General Spots per Row:
+                      <input
+                        type="number"
+                        name="generalSpotsPerRow"
+                        value={row.generalSpotsPerRow}
+                        onChange={(e) => handleRowChange(floorIndex, rowIndex, e)}
+                        min="0"
+                        required
+                      />
+                    </label>
+                    <label>
+                      Handicapped Spots per Row:
+                      <input
+                        type="number"
+                        name="handicappedSpotsPerRow"
+                        value={row.handicappedSpotsPerRow}
+                        onChange={(e) => handleRowChange(floorIndex, rowIndex, e)}
+                        min="0"
+                        required
+                      />
+                    </label>
+                    <label>
+                      EV Spots per Row:
+                      <input
+                        type="number"
+                        name="evSpotsPerRow"
+                        value={row.evSpotsPerRow}
+                        onChange={(e) => handleRowChange(floorIndex, rowIndex, e)}
+                        min="0"
+                        required
+                      />
+                    </label>
+                    <label>
+                      Subscription Spots per Row:
+                      <input
+                        type="number"
+                        name="subscriptionSpotsPerRow"
+                        value={row.subscriptionSpotsPerRow}
+                        onChange={(e) => handleRowChange(floorIndex, rowIndex, e)}
+                        min="0"
+                        required
+                      />
+                    </label>
+                  </div>
+                ))}
+              </div>
+            ))}
             <div className="form-buttons">
               <button type="submit">Submit</button>
               <button type="button" onClick={() => setShowForm(false)} className="cancel-button">

@@ -28,7 +28,7 @@ function App() {
         <Stack.Screen name="AddHardware" component={AddHardwareScreen} />
         <Stack.Screen name="AddSensorModule" component={AddSensorModuleScreen} />
         <Stack.Screen name="AddEntryExitModule" component={AddEntryExitModuleScreen} />
-        <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+        
       </Stack.Navigator>
     </NavigationContainer>
   );

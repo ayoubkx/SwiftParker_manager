@@ -1,13 +1,30 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useAuth } from "../../backend/config/contexts/authContext";
+import { getManagerInfo } from "../../backend/apiFunction";
 import "./Home.css";
 
 const Home = () => {
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
+  const [managerName, setManagerName] = useState("");
 
-  const managerName = localStorage.getItem("managerName") || "Manager";
 
+  useEffect(() => {
+    const fetchManagerInfo = async () => {
+      if (!currentUser) return; // Ensure currentUser exists
+      try {
+        const managerData = await getManagerInfo(currentUser.uid);
+        setManagerName(`${managerData.firstName} ${managerData.lastName}`);
+      } catch (error) {
+        console.error("Error fetching manager info:", error);
+      }
+    };
 
+    fetchManagerInfo();
+  }, [currentUser]);
+  
   return (
     <div className="home-container">
       <h1 className="home-title">Dashboard</h1>
@@ -17,18 +34,12 @@ const Home = () => {
         <div className="card">
           <div className="card-header bg-gradient-to-r from-blue-500 to-blue-600"></div>
           <div className="card-body">
-            <h5 className="card-title">Manage Users</h5>
+            <h5 className="card-title">Manage Subscribed Users</h5>
             <p className="card-description">
-              Perform CRUD operations for user management, including creating, editing, and deleting user details.
+              Perform operations for subscribed user management, including renewing and canceling their subscription.
             </p>
           </div>
           <div className="card-footer">
-            <button
-              className="card-button"
-              onClick={() => navigate("/CRUD")}
-            >
-              Go to Users
-            </button>
           </div>
         </div>
 
@@ -55,18 +66,12 @@ const Home = () => {
         <div className="card">
           <div className="card-header bg-gradient-to-r from-yellow-500 to-yellow-600"></div>
           <div className="card-body">
-            <h5 className="card-title">Payments</h5>
+            <h5 className="card-title">Parking Session Logs</h5>
             <p className="card-description">
-              View and manage payment details for transactions within the system.
+              View updates about your parking lots, including and exit times, payment status.
             </p>
           </div>
           <div className="card-footer">
-            <button
-              className="card-button"
-              onClick={() => navigate("/payments")}
-            >
-              Go to Payments
-            </button>
           </div>
         </div>
 

@@ -1,197 +1,147 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  getSubscribedUsersByParkingLot,
+  cancelSubscription,
+  renewSubscription
+} from "../../backend/subscriptions"; 
 import "./CRUD.css";
+import { useParams } from "react-router-dom";
 
 const CRUD = () => {
-  const [users, setUsers] = useState([
-    { 
-      id: 1, 
-      name: "John Doe", 
-      email: "john.doe@example.com", 
-      phoneNumber: "123-456-7890", 
-      licensePlate: "ABC123", 
-      isSubscribed: true 
-    },
-    { 
-      id: 2, 
-      name: "Jane Smith", 
-      email: "jane.smith@example.com", 
-      phoneNumber: "987-654-3210", 
-      licensePlate: "XYZ789", 
-      isSubscribed: false 
-    },
-  ]);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const [newUser, setNewUser] = useState({ 
-    name: "", 
-    email: "", 
-    phoneNumber: "", 
-    licensePlate: "", 
-    isSubscribed: false 
-  });
 
-  const [editingUser, setEditingUser] = useState(null);
-  const [showAddForm, setShowAddForm] = useState(false); 
+  const { lotId } = useParams(); // Get parking lot ID from URL
 
-  const handleAddUser = () => {
-    if (newUser.name && newUser.email) {
-      setUsers([...users, { id: Date.now(), ...newUser }]);
-      setNewUser({ name: "", email: "", phoneNumber: "", licensePlate: "", isSubscribed: false });
-      setShowAddForm(false); 
+
+  const fetchUsers = useCallback(async () => { // ✅ Wrap in useCallback
+    if (!lotId) return; // Ensure lotId is available before making API calls
+
+    setLoading(true);
+    setError("");
+  
+    try {
+      const fetchedUsers = await getSubscribedUsersByParkingLot(lotId);
+  
+      const transformedUsers = fetchedUsers.map((item) => ({
+        id: item.userId,
+        name: item.fullName,
+        email: item.email,
+        phoneNumber: item.phoneNumber,
+        licensePlate: item.licensePlates[0] || "N/A",
+        isSubscribed: true,
+        subscriptionId: item.subscription.id,
+        endDate: item.subscription.endDate
+      }));
+  
+      setUsers(transformedUsers);
+    } catch (error) {
+      console.error("Fetch Error:", error);
+      setError("Failed to load users.");
+    }
+  
+    setLoading(false);
+  }, [lotId]); // ✅ Add parkingLotId as a dependency
+
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]); 
+
+  // Handle cancel subscription (Delete)
+  const handleDeleteUser = async (userId, subscriptionId) => {
+    if (!window.confirm("Are you sure you want to cancel this subscription?")) return;
+
+    try {
+      await cancelSubscription(userId, subscriptionId);
+
+      // Remove user from local state after successful deletion
+      setUsers(users.filter((user) => user.id !== userId));
+    } catch (error) {
+      console.error("Delete Error:", error);
+      setError("Failed to cancel subscription.");
     }
   };
 
-  const handleEditUser = (user) => {
-    setEditingUser(user);
-  };
+  // Handle renew subscription
+  const handleRenewSubscription = async (userId, subscriptionId) => {
+    try {
+      const updatedSubscription = await renewSubscription(userId, subscriptionId);
 
-  const handleUpdateUser = () => {
-    setUsers(
-      users.map((user) =>
-        user.id === editingUser.id ? editingUser : user
-      )
-    );
-    setEditingUser(null);
-  };
+      // Update endDate in UI
+      const updatedUsers = users.map((user) =>
+          user.id === userId
+              ? { ...user, endDate: updatedSubscription.endDate }
+              : user
+      );
 
-  const handleDeleteUser = (id) => {
-    setUsers(users.filter((user) => user.id !== id));
+      setUsers(updatedUsers);
+    } catch (error) {
+      console.error("Renew Error:", error);
+      setError("Failed to renew subscription.");
+    }
   };
 
   return (
-    <div className="crud-container">
-      <div className="crud-title">
-        User Management
-      </div>
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Phone</th>
-            <th>License Plate</th>
-            <th>Subscribed</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((user) => (
-            <tr key={user.id}>
-              <td>{user.id}</td>
-              <td>{user.name}</td>
-              <td>{user.email}</td>
-              <td>{user.phoneNumber}</td>
-              <td>{user.licensePlate}</td>
-              <td>{user.isSubscribed ? "Yes" : "No"}</td>
-              <td>
-                <button onClick={() => handleEditUser(user)}>Edit</button>
-                <button onClick={() => handleDeleteUser(user.id)}>Delete</button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="crud-container-v2">
+      <div className="crud-title-v2">Subscribed User Management</div>
+  
+      {loading && <p>Loading...</p>}
+      {error && <p style={{ color: "red" }}>{error}</p>}
+  
+      {!loading && (
+        <>
+          <table className="crud-table-v2">
+            <thead>
+              <tr>
+                <th>User ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>License Plate</th>
+                <th>Subscribed</th>
+                <th>End Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.length === 0 && (
+                <tr>
+                  <td colSpan="8">No users found.</td>
+                </tr>
+              )}
+              {users.map((user) => (
+                <tr key={user.id}>
+                  <td>{user.id}</td>
+                  <td>{user.name}</td>
+                  <td>{user.email}</td>
+                  <td>{user.phoneNumber}</td>
+                  <td>{user.licensePlate}</td>
+                  <td>{user.isSubscribed ? "Yes" : "No"}</td>
+                  <td>{user.endDate ? new Date(user.endDate).toLocaleDateString() : "N/A"}</td>
+                  <td>
+                    <button
+                      className="crud-button-v2 danger"
+                      onClick={() => handleDeleteUser(user.id, user.subscriptionId)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="crud-button-v2 primary"
+                      onClick={() => handleRenewSubscription(user.id, user.subscriptionId)}
+                    >
+                      Renew
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+  
 
-      {/* Add User Button */}
-      {!showAddForm && (
-        <button className="add-user-button" onClick={() => setShowAddForm(true)}>
-          Add User
-        </button>
-      )}
-
-      {/* Add User Form */}
-      {showAddForm && (
-        <div className="add-form">
-          <h2>Add User</h2>
-          <input
-            type="text"
-            placeholder="Name"
-            value={newUser.name}
-            onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-          />
-          <input
-            type="email"
-            placeholder="Email"
-            value={newUser.email}
-            onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-          />
-          <input
-            type="text"
-            placeholder="Phone Number"
-            value={newUser.phoneNumber}
-            onChange={(e) => setNewUser({ ...newUser, phoneNumber: e.target.value })}
-          />
-          <input
-            type="text"
-            placeholder="License Plate"
-            value={newUser.licensePlate}
-            onChange={(e) => setNewUser({ ...newUser, licensePlate: e.target.value })}
-          />
-          <label>
-            <span>Subscribed</span>
-            <input
-              type="checkbox"
-              checked={newUser.isSubscribed}
-              onChange={(e) => setNewUser({ ...newUser, isSubscribed: e.target.checked })}
-            />
-          </label>
-          <div className="form-buttons">
-            <button onClick={handleAddUser}>Add</button>
-            <button onClick={() => setShowAddForm(false)} className="close-button">
-              Close
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Edit User Form */}
-      {editingUser && (
-        <div className="edit-form">
-          <h2>Edit User</h2>
-          <input
-            type="text"
-            placeholder="Name"
-            value={editingUser.name}
-            onChange={(e) =>
-              setEditingUser({ ...editingUser, name: e.target.value })
-            }
-          />
-          <input
-            type="email"
-            placeholder="Email"
-            value={editingUser.email}
-            onChange={(e) =>
-              setEditingUser({ ...editingUser, email: e.target.value })
-            }
-          />
-          <input
-            type="text"
-            placeholder="Phone Number"
-            value={editingUser.phoneNumber}
-            onChange={(e) =>
-              setEditingUser({ ...editingUser, phoneNumber: e.target.value })
-            }
-          />
-          <input
-            type="text"
-            placeholder="License Plate"
-            value={editingUser.licensePlate}
-            onChange={(e) =>
-              setEditingUser({ ...editingUser, licensePlate: e.target.value })
-            }
-          />
-          <label>
-            <span>Subscribed</span>
-            <input
-              type="checkbox"
-              checked={editingUser.isSubscribed}
-              onChange={(e) =>
-                setEditingUser({ ...editingUser, isSubscribed: e.target.checked })
-              }
-            />
-          </label>
-          <button onClick={handleUpdateUser}>Update</button>
-        </div>
+        </>
       )}
     </div>
   );

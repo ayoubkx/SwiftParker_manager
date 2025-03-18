@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Navigate, Link } from 'react-router-dom';
 import { FaUser } from "react-icons/fa";
 import { CiLock } from "react-icons/ci";
-import { FcGoogle } from "react-icons/fc";
-import { doSignInWithEmailAndPassword, doSignInWithGoogle } from '../../backend/config/auth';
+import { doSignInWithEmailAndPassword } from '../../backend/config/auth';
 import { useAuth } from '../../backend/config/contexts/authContext';
 import './Login.css';
 
@@ -22,21 +21,21 @@ const Login = () => {
       setIsSigningIn(true);
       try {
         await doSignInWithEmailAndPassword(email, password);
-        navigate('/dashboard');
-      } catch (error) {
-        setErrorMessage(error.message);
-      } finally {
-        setIsSigningIn(false);
-      }
-    }
-  };
-
-  const handleGoogleSignIn = async (e) => {
-    e.preventDefault();
-    if (!isSigningIn) {
-      setIsSigningIn(true);
-      try {
-        await doSignInWithGoogle();
+        
+        // Check if there's a Stripe onboarding URL in sessionStorage
+        const onboardingUrl = sessionStorage.getItem('stripeOnboardingUrl');
+        if (onboardingUrl) {
+          // Give the user option to complete Stripe onboarding
+          if (window.confirm('You have a pending Stripe account setup. Would you like to complete it now?')) {
+            window.location.href = onboardingUrl;
+            sessionStorage.removeItem('stripeOnboardingUrl');
+            return; // Stop execution since we're redirecting
+          } else {
+            // Clear the URL if user doesn't want to complete onboarding now
+            sessionStorage.removeItem('stripeOnboardingUrl');
+          }
+        }
+        
         navigate('/dashboard');
       } catch (error) {
         setErrorMessage(error.message);
@@ -90,20 +89,6 @@ const Login = () => {
           disabled={isSigningIn}
         >
           {isSigningIn ? 'Signing In...' : 'Login'}
-        </button>
-
-        <div className="divider">
-          <span>OR</span>
-        </div>
-
-        <button
-          type="button"
-          onClick={handleGoogleSignIn}
-          className="google-signin"
-          disabled={isSigningIn}
-        >
-          <FcGoogle className="google-icon" />
-          {isSigningIn ? 'Signing In...' : 'Continue with Google'}
         </button>
 
         <div className="register-link">

@@ -35,12 +35,15 @@ exports.createStripeCustomer = onValueCreated({
     }
 });
 
-// Setup payment method for user
+// Setup payment method for user - UPDATED to include billing details
+// Updated setupPaymentMethod function to handle cardholder name
+// Updated setupPaymentMethod function to handle cardholder name using Firebase Functions v2 SDK
+// Make sure to match your existing structure
 exports.setupPaymentMethod = onCall({
     region: "us-central1",
 }, async (request) => {
     try {
-        const {userId, paymentMethodId} = request.data;
+        const {userId, paymentMethodId, billingDetails} = request.data;
 
         // Get user's Stripe customer ID
         const userSnapshot = await admin.database().ref(`/users/${userId}/stripeCustomer`).once("value");
@@ -48,6 +51,20 @@ exports.setupPaymentMethod = onCall({
 
         if (!userData || !userData.stripeCustomerId) {
             throw new Error("User has no Stripe customer account");
+        }
+
+        // If billingDetails were provided, update the payment method first
+        if (billingDetails && billingDetails.name) {
+            try {
+                // Update the payment method's billing details
+                await stripe.paymentMethods.update(paymentMethodId, {
+                    billing_details: {name: billingDetails.name},
+                });
+                console.log(`Updated payment method ${paymentMethodId} with billing name: ${billingDetails.name}`);
+            } catch (updateError) {
+                // Log error but continue - don't fail the whole operation if just the name update fails
+                console.error("Error updating payment method with billing details:", updateError);
+            }
         }
 
         // Attach payment method to the customer
@@ -63,10 +80,17 @@ exports.setupPaymentMethod = onCall({
         });
 
         // Save reference in database
-        await admin.database().ref(`/users/${userId}/paymentMethods/${paymentMethodId}`).set({
+        const paymentMethodData = {
             added: admin.database.ServerValue.TIMESTAMP,
             isDefault: true,
-        });
+        };
+
+        // Add billingName if provided
+        if (billingDetails && billingDetails.name) {
+            paymentMethodData.billingName = billingDetails.name;
+        }
+
+        await admin.database().ref(`/users/${userId}/paymentMethods/${paymentMethodId}`).set(paymentMethodData);
 
         return {success: true};
     } catch (error) {
@@ -74,7 +98,6 @@ exports.setupPaymentMethod = onCall({
         throw new Error(error.message);
     }
 });
-
 // List payment methods for user
 exports.listPaymentMethods = onCall({
     region: "us-central1",
@@ -96,7 +119,21 @@ exports.listPaymentMethods = onCall({
             type: "card",
         });
 
-        return {paymentMethods: paymentMethods.data};
+        // Get stored payment method data from database
+        const paymentMethodsSnapshot = await admin.database().ref(`/users/${userId}/paymentMethods`).once("value");
+        const storedPaymentMethods = paymentMethodsSnapshot.val() || {};
+
+        // Merge Stripe data with our database data
+        const enhancedPaymentMethods = paymentMethods.data.map((pm) => {
+            const storedData = storedPaymentMethods[pm.id] || {};
+            return {
+                ...pm,
+                isDefault: storedData.isDefault || false,
+                billingName: storedData.billingName || "",
+            };
+        });
+
+        return {paymentMethods: enhancedPaymentMethods};
     } catch (error) {
         console.error("Error listing payment methods:", error);
         throw new Error(error.message);

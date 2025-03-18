@@ -1,34 +1,67 @@
-import database from '@react-native-firebase/database';
+import API from './api';
+import axios from 'axios';
 
-const sendOpenGateRequest = async (microcontrollerID) => {
+// Get QRScanner by parkingLotId and type (Entry/Exit)
+export const getQRScannerByParkingLotAndType = async (parkingLotId, type) => {
     try {
-        // Retrieve the microprocessor's IP from Firebase
-        const snapshot = await database().ref(`/microcontrollers/${microcontrollerID}`).once('value');
-        const microcontroller = snapshot.val();
+        const response = await API.get(`/qrScanners.json?orderBy="parkingLotId"&equalTo="${parkingLotId}"`);
+        const scanners = response.data;
 
-        if (!microcontroller || !microcontroller.ip) {
-            alert("Microcontroller not found!");
+        if (!scanners) {
+            console.warn('No scanners found for this parking lot.');
+            return null;
+        }
+
+        const scannerArray = Object.entries(scanners).map(([id, data]) => ({
+            id,
+            ...data
+        }));
+
+        const scanner = scannerArray.find(s => s.type.toLowerCase() === type.toLowerCase());
+
+        if (!scanner) {
+            console.warn(`No ${type} scanner found for this parking lot.`);
+            return null;
+        }
+
+        return scanner;
+
+    } catch (error) {
+        console.error('Error fetching QR scanners:', error);
+        return null;
+    }
+};
+
+// Send command to scanner to open gate
+export const openGateForParkingLot = async (parkingLotId, type) => {
+    try {
+        const scanner = await getQRScannerByParkingLotAndType(parkingLotId, type);
+
+        if (!scanner) {
+            console.warn('Scanner not found or not assigned.');
             return;
         }
 
-        const microprocessorIP = microcontroller.ip;
-        console.log(`Sending request to ESP32 at: ${microprocessorIP}`);
+        const ipAddress = scanner.ipAddress;
 
-        // Send HTTP request directly to ESP32
-        const response = await fetch(`http://${microprocessorIP}/open-gate`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ command: "OPEN_GATE" }),
-        });
-
-        const data = await response.json();
-        if (data.success) {
-            alert("Gate opened successfully!");
-        } else {
-            alert("Failed to open gate.");
+        if (!ipAddress) {
+            console.warn('No IP address assigned to this scanner.');
+            return;
         }
+
+        // Send HTTP request to the MCU/scanner to open the gate
+        const endpoint = `http://${ipAddress}/openGate?ip=${ipAddress}`;
+
+        const response = await axios.get(endpoint);
+
+        if (response.status === 200) {
+            console.log(`Gate opened successfully via ${ipAddress}`);
+        } else {
+            console.warn('Failed to open gate:', response.status);
+        }
+
     } catch (error) {
-        console.error("Error:", error);
-        alert("Could not send request to microcontroller.");
+        console.error('Error opening gate:', error);
     }
 };
+
