@@ -71,7 +71,7 @@ const AppContent = () => {
             <Payments />
           </ProtectedRoute>
         } />
-        <Route path="/parkinglog" element={
+        <Route path="/parkinglog/:lotId" element={
           <ProtectedRoute>
             <ParkingLog />
           </ProtectedRoute>

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { getParkingSessions, getUserById } from "../../backend/apiFunction";
+import { getParkingSessions, getUserById,  } from "../../backend/apiFunction";
 import "./ParkingLog.css";
+import { useParams } from "react-router-dom";
 
 const ParkingLog = () => {
-  const parkingLotId = "-OLZako6w9ybiHHQj5LW"; // Hardcoded lot ID for now
+  const { lotId } = useParams();
   const [parkingSessions, setParkingSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -15,7 +16,7 @@ const ParkingLog = () => {
         setError("");
 
         // Fetch sessions for the parking lot
-        const sessions = await getParkingSessions(parkingLotId);
+        const sessions = await getParkingSessions(lotId);
 
         // Fetch user details for each session
         const sessionsWithUserData = await Promise.all(

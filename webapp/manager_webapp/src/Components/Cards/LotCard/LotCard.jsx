@@ -1,7 +1,7 @@
 import React from "react";
 import "./LotCard.css";
 
-const LotCard = ({ lot, onManageLot, onCRUD }) => {
+const LotCard = ({ lot, onManageLot, onCRUD, onParkingLogs }) => {
   const { id, name, image, location } = lot;
 
   return (
@@ -29,6 +29,12 @@ const LotCard = ({ lot, onManageLot, onCRUD }) => {
           onClick={() => onCRUD(id)}
         >
           Manage Users
+        </button>
+        <button
+          className="lot-card-button"
+          onClick={() => onParkingLogs(id)}
+        >
+          View Session Logs
         </button>
       </div>
     </div>
