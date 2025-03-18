@@ -42,7 +42,7 @@ const ParkingLot = () => {
           dailyRateWeekend: parkingLotData.dailyRateWeekend || "",
           subscriptionRate: parkingLotData.subscriptionRate || "",
           availableSpots: parkingLotData.availableSpots,
-          floors: floorsData || [], // Use floorsData instead of parkingLotData.floors
+          floors: floorsData || [], 
         });
       } catch (err) {
         console.error("Error fetching parking lot:", err);
