@@ -1,5 +1,27 @@
 import API from './api.js';
 
+// ---------------------- MANAGER MANAGEMENT ----------------------
+
+export const getManagerInfo = async (managerId) => {
+
+  try {
+    const response = await API.get(`/managers/${managerId}.json`);
+
+    if (!response.data) {
+      throw new Error('Manager not found');
+    }
+
+    return {
+      id: managerId,
+      ...response.data
+    };
+  } catch (error) {
+    console.error('Error getting manager info:', error);
+    throw error;
+  }
+
+}
+
 // ---------------------- PARKING LOT MANAGEMENT ----------------------
 
 // Create a new parking lot
