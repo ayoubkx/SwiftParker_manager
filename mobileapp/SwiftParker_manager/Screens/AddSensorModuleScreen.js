@@ -141,14 +141,14 @@ const AddSensorModuleScreen = ({ navigation }) => {
         }
 
         try {
-            const response = await addDeviceToSpot({
-                parkingLotId: parkingLot.id,
-                floorId: selectedFloor,
-                rowId: selectedRow,
-                spotNumber: parseInt(selectedSpot) + 1, // +1 if selectedSpot is 0-based
-                deviceId: deviceID,
-                sensorId: selectedSensor === 'A' ? 0 : 1
-            });
+            const response = await addDeviceToSpot(
+                parkingLot.id,
+                selectedFloor,
+                selectedRow,
+                parseInt(selectedSpot)+ 1 ,
+                deviceID,
+                selectedSensor === 'A' ? 0 : 1
+            );
 
             if (response?.success) {
                 alert(response.message);

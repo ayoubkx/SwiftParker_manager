@@ -215,24 +215,21 @@ export const addDevice = async () => {
 
 //---------add Device to a spot
 
-export const addDeviceToSpot = async (req, res) => {
+export const addDeviceToSpot = async (parkingLotId, floorId, rowId, spotNumber, deviceId, sensorId) => {
   try {
-    const { parkingLotId, floorId, rowId, spotNumber } = req.params;
-    const { deviceId, sensorId } = req.body;
 
-    // Validate required fields
     if (!deviceId) {
-      return res.status(400).json({ error: 'Device ID is required' });
+      throw new Error('Device ID is required');
     }
 
     if (sensorId === undefined || sensorId === null) {
-      return res.status(400).json({ error: 'Sensor ID is required when assigning a device' });
+      throw new Error('Sensor ID is required when assigning a device');
     }
 
     // Validate spotNumber is a positive integer (since we're using 1-based numbering)
     const spotNumber1Based = parseInt(spotNumber);
     if (isNaN(spotNumber1Based) || spotNumber1Based < 1) {
-      return res.status(400).json({ error: 'Spot number must be a positive integer (starting from 1)' });
+      throw new Error('Spot number must be a positive integer (starting from 1)');
     }
 
     // Convert from 1-based (user-facing) to 0-based (array index)
@@ -240,7 +237,7 @@ export const addDeviceToSpot = async (req, res) => {
 
     // Validate sensorId value
     if (sensorId !== 0 && sensorId !== 1) {
-      return res.status(400).json({ error: 'Sensor ID must be either 0 or 1' });
+      throw new Error('Sensor ID must be either 0 or 1');
     }
 
     // Get the parking lot data
@@ -249,26 +246,24 @@ export const addDeviceToSpot = async (req, res) => {
 
     // Check if the parking lot exists
     if (!parkingLotData) {
-      return res.status(404).json({ error: 'Parking lot not found' });
+      throw new Error('Parking lot not found');
     }
 
     // Find the floor
     const floor = parkingLotData.floors.find(f => f.floorId === parseInt(floorId));
     if (!floor) {
-      return res.status(404).json({ error: 'Floor not found' });
+      throw new Error('Floor not found');
     }
 
     // Find the row
     const row = floor.rows.find(r => r.rowId === rowId);
     if (!row) {
-      return res.status(404).json({ error: 'Row not found' });
+      throw new Error('Row not found');
     }
 
     // Check if the spotNumber is valid (within array bounds)
     if (spotIndex >= row.spots.length) {
-      return res.status(404).json({
-        error: `Spot number ${spotNumber1Based} not found. The row only has ${row.spots.length} spots (numbered 1-${row.spots.length}).`
-      });
+      throw new Error(`Spot number ${spotNumber1Based} not found. The row only has ${row.spots.length} spots (numbered 1-${row.spots.length}).`);
     }
 
     // Get the actual spot using the provided index
@@ -277,7 +272,7 @@ export const addDeviceToSpot = async (req, res) => {
 
     // Check if spot already has a device
     if (spot.deviceId) {
-      return res.status(400).json({ error: 'Spot already has a device assigned' });
+      throw new Error('Spot already has a device assigned');
     }
 
     // Check if device exists and get device data
@@ -285,14 +280,12 @@ export const addDeviceToSpot = async (req, res) => {
     const deviceData = deviceResponse.data;
 
     if (!deviceData) {
-      return res.status(404).json({ error: 'Device not found' });
+      throw new Error('Device not found');
     }
 
     // Check device spots array length
     if (deviceData.spots && deviceData.spots.length >= 2) {
-      return res.status(400).json({
-        error: 'Device cannot be assigned to more spots. Maximum limit is 2 spots per device.'
-      });
+      throw new Error('Device cannot be assigned to more spots. Maximum limit is 2 spots per device.');
     }
 
     // If device already has a spot, check location and sensor constraints
@@ -301,9 +294,7 @@ export const addDeviceToSpot = async (req, res) => {
       if (deviceData.parkingLotId !== parkingLotId ||
           deviceData.floorId !== parseInt(floorId) ||
           deviceData.rowId !== rowId) {
-        return res.status(400).json({
-          error: 'All spots for a device must be in the same parking lot, floor, and row'
-        });
+        throw new Error('All spots for a device must be in the same parking lot, floor, and row');
       }
 
       // Check if sensorId is already used
@@ -313,9 +304,7 @@ export const addDeviceToSpot = async (req, res) => {
           ?.spots.find(s => s.deviceId === deviceId);
 
       if (existingSpot && existingSpot.sensorId === sensorId) {
-        return res.status(400).json({
-          error: `Sensor ID ${sensorId} is already used by another spot in this device`
-        });
+        throw new Error(`Sensor ID ${sensorId} is already used by another spot in this device`);
       }
     }
 
@@ -364,14 +353,17 @@ export const addDeviceToSpot = async (req, res) => {
       rowId: rowId
     });
 
-    res.status(200).json({
+    return {
       success: true,
       message: 'Device added to spot successfully',
       spotId: spotId,
       spotNumber: spotNumber1Based
-    });
+    };
   } catch (error) {
     console.error('Error adding device to spot:', error);
-    res.status(500).json({ error: 'Failed to add device to spot' });
+    return {
+      success: false,
+      error: error.message || 'Failed to add device to spot'
+    };
   }
 };
