@@ -20,7 +20,28 @@ export const getManagerInfo = async (managerId) => {
     throw error;
   }
 
-}
+};
+
+// ---------------------- USER MANAGEMENT ----------------------
+
+export const getUserById = async (userId) => {
+  try {
+    const response = await API.get(`/users/${userId}.json`);
+
+    if (!response.data) {
+      throw new Error("User not found");
+    }
+
+    return {
+      id: userId,
+      ...response.data,
+    };
+  } catch (error) {
+    console.error("Error getting user:", error);
+    throw error;
+  }
+};
+
 
 // ---------------------- PARKING LOT MANAGEMENT ----------------------
 
@@ -531,5 +552,28 @@ export const updateSpot = async (parkingLotId, floorId, rowId, spotId, updateDat
     throw error;
   }
 };
+
+// ---------------------- LOG SESSION MANAGEMENT ----------------------
+
+export const getParkingSessions = async (parkingLotId) => {
+  try {
+    const response = await API.get(`/parkingSessions.json`);
+
+    if (!response.data) {
+      throw new Error("No parking sessions found.");
+    }
+
+    // Filter sessions by the specific parking lot
+    const sessions = Object.values(response.data).filter(
+      (session) => session.parkingLotId === parkingLotId
+    );
+
+    return sessions;
+  } catch (error) {
+    console.error("Error getting parking sessions:", error);
+    throw error;
+  }
+};
+
 
 
