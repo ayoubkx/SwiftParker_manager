@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   getSubscribedUsersByParkingLot,
   cancelSubscription,
   renewSubscription
 } from "../../backend/subscriptions"; // Make sure to update the correct path!
 import "./CRUD.css";
+import { useParams } from "react-router-dom";
 
 const CRUD = () => {
   const [users, setUsers] = useState([]);
@@ -20,20 +21,19 @@ const CRUD = () => {
     isSubscribed: false
   });
 
-  const parkingLotId = "-OLZako6w9ybiHHQj5LW"; // <-- hardcoded, or pass as prop if needed
 
-  // Fetch subscribed users when component mounts
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  const { lotId } = useParams(); // Get parking lot ID from URL
 
-  const fetchUsers = async () => {
+
+  const fetchUsers = useCallback(async () => { // ✅ Wrap in useCallback
+    if (!lotId) return; // Ensure lotId is available before making API calls
+
     setLoading(true);
     setError("");
-
+  
     try {
-      const fetchedUsers = await getSubscribedUsersByParkingLot(parkingLotId);
-
+      const fetchedUsers = await getSubscribedUsersByParkingLot(lotId);
+  
       const transformedUsers = fetchedUsers.map((item) => ({
         id: item.userId,
         name: item.fullName,
@@ -44,15 +44,20 @@ const CRUD = () => {
         subscriptionId: item.subscription.id,
         endDate: item.subscription.endDate
       }));
-
+  
       setUsers(transformedUsers);
     } catch (error) {
       console.error("Fetch Error:", error);
       setError("Failed to load users.");
     }
-
+  
     setLoading(false);
-  };
+  }, [lotId]); // ✅ Add parkingLotId as a dependency
+
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]); 
 
   // Handle cancel subscription (Delete)
   const handleDeleteUser = async (userId, subscriptionId) => {
