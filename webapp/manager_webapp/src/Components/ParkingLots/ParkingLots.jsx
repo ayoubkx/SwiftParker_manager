@@ -74,7 +74,7 @@ const ParkingLots = () => {
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
-    
+  
     // Handle phone number separately using PhoneInput
     if (name === "phoneNumber") {
       setFormData((prevData) => ({
@@ -84,10 +84,24 @@ const ParkingLots = () => {
       return;
     }
   
-    setFormData((prevData) => ({
-      ...prevData,
-      [name]: value,
-    }));
+    // Prevent negative values for rate fields
+    if (
+      name === "hourlyRateWeekday" ||
+      name === "dailyRateWeekday" ||
+      name === "hourlyRateWeekend" ||
+      name === "dailyRateWeekend" ||
+      name === "subscriptionRate"
+    ) {
+      const parsedValue = parseFloat(value);
+      if (parsedValue < 0) {
+        // If the value is negative, set it to 0
+        setFormData((prevData) => ({
+          ...prevData,
+          [name]: 0,
+        }));
+        return;
+      }
+    }
   
     // Handle floors separately
     if (name === "floors") {
@@ -100,7 +114,14 @@ const ParkingLots = () => {
         floors: Number(value),
         floorData: updatedFloorData,
       }));
+      return;
     }
+  
+    // Update other fields
+    setFormData((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }));
   };
   
   
