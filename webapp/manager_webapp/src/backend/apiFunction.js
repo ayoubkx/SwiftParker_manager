@@ -320,6 +320,29 @@ export const createRow = async (parkingLotId, floorId, rowId) => {
   };
   
   
+  // ------Get all rows in a floor
+
+export const getFloorRows = async (parkingLotId, floorId) => {
+  try {
+    const parkingLotResponse = await API.get(`/parkingLots/${parkingLotId}.json`);
+    const parkingLotData = parkingLotResponse.data;
+
+    if (!parkingLotData) {
+      throw new Error('Parking lot not found');
+    }
+
+    const floor = parkingLotData.floors.find((f) => f.floorId === parseInt(floorId));
+
+    if (!floor) {
+      throw new Error('Floor not found');
+    }
+
+    return floor.rows;
+  } catch (error) {
+    console.error('Error getting floor rows:', error);
+    throw error;
+  }
+};
 
 // ---------------------- SPOT MANAGEMENT ----------------------
 // Create a new spot
