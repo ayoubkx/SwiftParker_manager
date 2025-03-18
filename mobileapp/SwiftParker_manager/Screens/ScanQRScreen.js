@@ -5,7 +5,7 @@ import { Camera, CameraView } from 'expo-camera';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {checkUserSubscription} from "../backend/userManagement";
 import { createParkingSession, getOngoingParkingSessionByLotAndUser, getOngoingParkingSession , finalizeParkingSession , calculateParkingFee } from "../backend/ParkingSessions";
-
+import {openGateForParkingLot} from "../backend/OpengateRequest";
 
 const ScanQRScreen = ({ navigation }) => {
 
@@ -58,6 +58,7 @@ const ScanQRScreen = ({ navigation }) => {
             if (createResult.success) {
                 const actionMessage = `Opening gate for entry...\n✅ User  ${isSubscribed ? 'is subscribed' : 'is a visitor'}.`;
                 showAlertOnce('✅ Entry Granted', actionMessage);
+                await openGateForParkingLot(parkingLotId, 'Entry');
                 stopScan();
             } else {
                 showAlertOnce('❌ Error', 'Failed to create parking session.');
@@ -83,7 +84,7 @@ const ScanQRScreen = ({ navigation }) => {
             }
 
             const finalizedSession = await finalizeParkingSession(userId, parkingLot);
-
+            await openGateForParkingLot(parkingLot, 'Exit');
             const message = `
         ✅ Exit Granted
         Duration: ${finalizedSession.duration} minutes
