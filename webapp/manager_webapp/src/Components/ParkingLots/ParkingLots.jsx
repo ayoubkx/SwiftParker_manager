@@ -230,7 +230,7 @@ const ParkingLots = () => {
       </div>
       <div className="add-parking-lot-container">
         <button className="add-parking-lot-button" onClick={handleAddParkingLot}>
-          Add New Parking Lot
+          Set-up Parking Lot
         </button>
       </div>
 

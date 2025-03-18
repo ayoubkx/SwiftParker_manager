@@ -3,7 +3,7 @@ import {
   getSubscribedUsersByParkingLot,
   cancelSubscription,
   renewSubscription
-} from "../../backend/subscriptions"; // Make sure to update the correct path!
+} from "../../backend/subscriptions"; 
 import "./CRUD.css";
 import { useParams } from "react-router-dom";
 
