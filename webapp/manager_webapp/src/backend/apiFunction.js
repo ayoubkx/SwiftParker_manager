@@ -26,7 +26,7 @@ export const createParkingLot = async (managerId, parkingLotData) => {
         parkingLotData.floors.forEach(floor => {
           if (floor.rows) {
             floor.rows.forEach(row => {
-              row.spots = row.spots || []; // 🔹 Fix: Ensure spots is always an array
+              row.spots = row.spots || []; 
               row.spots.forEach(spot => {
                 if (totalAvailableSpots.hasOwnProperty(spot.type)) {
                   totalAvailableSpots[spot.type] += 1;
@@ -280,46 +280,95 @@ export const getFloors = async (parkingLotId) => {
 // ---------------------- ROW MANAGEMENT ----------------------
 
 // Add a new row to a specific floor in a parking lot
-export const createRow = async (parkingLotId, floorId, rowId) => {
-    try {
-      const response = await API.get(`/parkingLots/${parkingLotId}.json`);
-      const parkingLotData = response.data;
-  
-      if (!parkingLotData) {
-        throw new Error('Parking lot not found');
-      }
-  
-      const floor = parkingLotData.floors.find((f) => f.floorId === parseInt(floorId));
-  
-      if (!floor) {
-        throw new Error('Floor not found');
-      }
-  
-      if (!floor.rows) {
-        floor.rows = [];
-      }
-  
-      if (floor.rows.some((row) => row.rowId === rowId)) {
-        throw new Error(`Row with ID ${rowId} already exists`);
-      }
-  
-      // 🔹 Ensure spots is an empty array
-      const newRow = { rowId, spots: [] };
-  
-      const updatedFloors = parkingLotData.floors.map((f) =>
-        f.floorId === parseInt(floorId) ? { ...f, rows: [...f.rows, newRow] } : f
-      );
-  
-      await API.patch(`/parkingLots/${parkingLotId}.json`, { floors: updatedFloors });
-  
-      return { success: true, rowId };
-    } catch (error) {
-      console.error('Error adding row:', error);
-      throw error;
+export const createRow = async (parkingLotId, floorId) => {
+  try {
+    const response = await API.get(`/parkingLots/${parkingLotId}.json`);
+    const parkingLotData = response.data;
+
+    if (!parkingLotData) {
+      throw new Error('Parking lot not found');
     }
+
+    const floor = parkingLotData.floors.find((f) => f.floorId === parseInt(floorId));
+
+    if (!floor) {
+      throw new Error('Floor not found');
+    }
+
+    if (!floor.rows) {
+      floor.rows = [];
+    }
+
+    // 🔹 Generate a unique row ID following the format "R{floorId}{rowIndex}"
+    const newRowId = `R${floorId}${floor.rows.length}`;
+
+    // Ensure the new row ID is unique
+    if (floor.rows.some((row) => row.rowId === newRowId)) {
+      throw new Error(`Row with ID ${newRowId} already exists`);
+    }
+
+    // Create new row with an empty spots array
+    const newRow = { rowId: newRowId, spots: [] };
+
+    // Update floors with the new row
+    const updatedFloors = parkingLotData.floors.map((f) =>
+      f.floorId === parseInt(floorId) ? { ...f, rows: [...f.rows, newRow] } : f
+    );
+
+    // Update the parking lot with the new floors data
+    await API.patch(`/parkingLots/${parkingLotId}.json`, { floors: updatedFloors });
+
+    return { success: true, rowId: newRowId };
+  } catch (error) {
+    console.error('Error adding row:', error);
+    throw error;
+  }
   };
   
+
+  export const getRowSpots = async (parkingLotId, floorId, rowId) => {
+
+    try {
+      const response = await API.get(`/parkingLots/${parkingLotId}.json`);
+      if (!response.data) throw new Error('Parking lot not found.');
   
+      const floor = response.data.floors.find(f => f.floorId === parseInt(floorId));
+      if (!floor) throw new Error('Floor not found.');
+  
+      const row = floor.rows.find(r => r.rowId === rowId);
+      if (!row) throw new Error('Row not found.');
+  
+      return row.spots || [];
+    } catch (error) {
+      console.error('Error getting row spots:', error);
+      throw error;
+    } 
+
+  };
+  
+  // ------Get all rows in a floor
+
+export const getFloorRows = async (parkingLotId, floorId) => {
+  try {
+    const parkingLotResponse = await API.get(`/parkingLots/${parkingLotId}.json`);
+    const parkingLotData = parkingLotResponse.data;
+
+    if (!parkingLotData) {
+      throw new Error('Parking lot not found');
+    }
+
+    const floor = parkingLotData.floors.find((f) => f.floorId === parseInt(floorId));
+
+    if (!floor) {
+      throw new Error('Floor not found');
+    }
+
+    return floor.rows;
+  } catch (error) {
+    console.error('Error getting floor rows:', error);
+    throw error;
+  }
+};
 
 // ---------------------- SPOT MANAGEMENT ----------------------
 // Create a new spot
