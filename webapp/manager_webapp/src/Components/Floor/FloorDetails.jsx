@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { createRow, getFloorRows, getRowSpots } from "../../backend/apiFunction";
 import RowCard from "../Cards/RowCard/RowCard";
@@ -13,11 +13,9 @@ const FloorDetails = () => {
   const [floorExists, setFloorExists] = useState(true);
   const [addingRow, setAddingRow] = useState(false);
 
-  useEffect(() => {
-    fetchRows();
-  }, [parkingLotId, floorId]);
 
-  const fetchRows = async () => {
+  
+  const fetchRows = useCallback(async () => {
     try {
       const floorRows = await getFloorRows(parkingLotId, floorId);
   
@@ -41,7 +39,11 @@ const FloorDetails = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [parkingLotId, floorId]); // ✅ Added dependencies
+  
+  useEffect(() => {
+    fetchRows();
+  }, [fetchRows]); // ✅ Fixed missing dependency warning
   
 
   const handleManageSpots = (rowId) => {
