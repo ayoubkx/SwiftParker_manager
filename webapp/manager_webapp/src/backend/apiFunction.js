@@ -368,12 +368,14 @@ export const getFloorRows = async (parkingLotId, floorId) => {
       throw new Error('Floor not found');
     }
 
-    return floor.rows;
+    // Return an empty array if no rows exist
+    return floor.rows || [];
   } catch (error) {
     console.error('Error getting floor rows:', error);
     throw error;
   }
 };
+
 
 // ---------------------- SPOT MANAGEMENT ----------------------
 // Create a new spot

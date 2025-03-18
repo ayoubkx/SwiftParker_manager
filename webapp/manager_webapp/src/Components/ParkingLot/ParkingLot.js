@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react"
 import { useAuth } from "../../backend/config/contexts/authContext";
 import { useParams, useNavigate } from "react-router-dom";
-import { deleteParkingLot, updateParkingLot, createFloor, getParkingLotInfo, getFloors, getParkingLot } from "../../backend/apiFunction";
+import { deleteParkingLot, updateParkingLot, createFloor, getParkingLotInfo, getFloors } from "../../backend/apiFunction";
 import "./ParkingLot.css";
 
 const ParkingLot = () => {
