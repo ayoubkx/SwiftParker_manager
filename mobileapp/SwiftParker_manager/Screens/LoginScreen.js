@@ -128,9 +128,9 @@ const LoginScreen = ({ navigation }) => {
                         <Text style={styles.loginButtonText}>Login</Text>
                     )}
                 </TouchableOpacity>
-                <TouchableOpacity disabled={loading}>
-                    <Text style={styles.forgotPassword}>Forgot Password?</Text>
-                </TouchableOpacity>
+                {/*<TouchableOpacity disabled={loading}>*/}
+                {/*    <Text style={styles.forgotPassword}>Forgot Password?</Text>*/}
+                {/*</TouchableOpacity>*/}
             </ScrollView>
         </KeyboardAvoidingView>
     );
