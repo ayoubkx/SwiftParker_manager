@@ -63,12 +63,11 @@ const ParkingLog = () => {
         <table className="parking-log-table">
           <thead>
             <tr>
-              <th>Session ID</th>
               <th>User Name</th>
               <th>Phone Number</th>
               <th>Entry Time</th>
               <th>Exit Time</th>
-              <th>Duration (min)</th>
+              <th>Duration (hrs)</th>
               <th>Amount Charged ($)</th>
               <th>Payment Status</th>
             </tr>
@@ -76,7 +75,6 @@ const ParkingLog = () => {
           <tbody>
             {parkingSessions.map((session) => (
               <tr key={session.sessionId}>
-                <td>{session.sessionId}</td>
                 <td>{session.userName}</td>
                 <td>{session.userPhone}</td>
                 <td>{new Date(session.entryTime).toLocaleString()}</td>
