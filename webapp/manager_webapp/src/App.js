@@ -8,7 +8,6 @@ import CRUD from './Components/CRUD/CRUD';
 import ParkingLot from './Components/ParkingLot/ParkingLot';
 import FloorDetails from './Components/Floor/FloorDetails';
 import SpotsManagement from "./Components/Spots/SpotsManagement";
-import Payments from "./Components/Payments/Payments";
 import ParkingLog from "./Components/ParkingLog/ParkingLog";
 import Home from "./Components/Home/Home";
 import ParkingLots from './Components/ParkingLots/ParkingLots';
@@ -64,11 +63,6 @@ const AppContent = () => {
         <Route path="/parking-list" element={
           <ProtectedRoute>
             <ParkingLots />
-          </ProtectedRoute>
-        } />
-        <Route path="/payments" element={
-          <ProtectedRoute>
-            <Payments />
           </ProtectedRoute>
         } />
         <Route path="/parkinglog/:lotId" element={

@@ -34,7 +34,7 @@ const LotCard = ({ lot, onManageLot, onCRUD, onParkingLogs }) => {
           className="lot-card-button"
           onClick={() => onParkingLogs(id)}
         >
-          View Session Logs
+          View Logs
         </button>
       </div>
     </div>
