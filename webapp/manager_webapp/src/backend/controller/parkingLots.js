@@ -1230,6 +1230,8 @@
 //----------- add a parking lot for an existing manager
 
 import API from '../api.js';
+import Stripe from 'stripe';
+const stripe = new Stripe('sk_test_51R3RO44I2CoMhqZ1CmQvbeNH6hzLmUXV1eBCtJjWvVpHusm6IRrna5TwJiHEzAMTsYuMGCr3TUSlAoxw6RN7B03R00XMx2mAjI');
 export const addParkingLot = async (req, res) => {
   try {
     const { 
@@ -2936,3 +2938,134 @@ export const deleteQrScanner = async (req, res) => {
   }
 };
 
+
+export const deleteStripeAccount = async (req, res) => {
+  try {
+    const { accountId } = req.params;
+
+    console.log('Received accountId:', accountId); // Debug log
+
+    if (!accountId || typeof accountId !== 'string') {
+      return res.status(400).json({ error: 'Invalid accountId' });
+    }
+
+    // Ensure accountId format is valid
+    if (!/^acct_[a-zA-Z0-9]+$/.test(accountId)) {
+      return res.status(400).json({ error: 'Invalid accountId format' });
+    }
+
+    const account = await stripe.accounts.retrieve(accountId);
+    if (!account) {
+      return res.status(404).json({ error: 'Stripe account not found' });
+    }
+
+    await stripe.accounts.del(accountId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Stripe account successfully deleted',
+      accountId
+    });
+  } catch (error) {
+    console.error('Error deleting Stripe account:', error);
+    res.status(500).json({ error: 'Failed to delete Stripe account' });
+  }
+};
+
+
+
+export const createParkingSession = async (req, res) => {
+  try {
+    const {
+     
+   
+      isSubscribed,
+      parkingLotId,
+      paymentStatus,
+      userId,
+    } = req.body;
+
+    // Validate required fields
+    if ( !parkingLotId || !paymentStatus || !userId || !isSubscribed) {
+      return res.status(400).json({ error: "All fields except entryTime are required" });
+    }
+
+    // Generate current timestamp in ISO 8601 format (same as screenshot)
+    const entryTime = new Date().toISOString();
+
+    // Generate a new session ID
+    const sessionRef = await API.post("/parkingSessions.json", {
+      entryTime,
+      isSubscribed,
+      parkingLotId,
+      paymentStatus,
+      userId,
+    });
+
+    const sessionId = sessionRef.data.name; // Firebase returns the unique key
+
+    // Update session object with sessionId
+    await API.patch(`/parkingSessions/${sessionId}.json`, { sessionId });
+
+    res.status(201).json({
+      success: true,
+      message: "Parking session successfully created",
+      sessionId,
+      entryTime,
+    });
+  } catch (error) {
+    console.error("Error creating parking session:", error);
+    res.status(500).json({ error: "Failed to create parking session" });
+  }
+};
+
+
+
+export const updateExitTime = async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+
+    // Validate required parameter
+    if (!sessionId) {
+      return res.status(400).json({ error: "sessionId is required" });
+    }
+
+    // Get the parking session to ensure it exists
+    const sessionResponse = await API.get(`/parkingSessions/${sessionId}.json`);
+    const sessionData = sessionResponse.data;
+
+    if (!sessionData) {
+      return res.status(404).json({ error: "Parking session not found" });
+    }
+
+    const { entryTime } = sessionData;
+
+    // Generate the current timestamp in ISO 8601 format
+    const exitTime = new Date().toISOString();
+
+    // Calculate the duration in minutes
+    const entryDate = new Date(entryTime);
+    const exitDate = new Date(exitTime);
+    const durationInMilliseconds = exitDate - entryDate;
+
+    // Convert milliseconds to minutes and round up
+    const duration = Math.ceil(durationInMilliseconds / 60000);
+
+    // Update the parking session with the exit time and duration
+    await API.patch(`/parkingSessions/${sessionId}.json`, { 
+      exitTime, 
+      duration 
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Exit time and duration successfully updated",
+      sessionId,
+      exitTime,
+      duration,
+    });
+  } catch (error) {
+    console.error("Error updating exit time:", error);
+    res.status(500).json({ error: "Failed to update exit time" });
+  }
+};

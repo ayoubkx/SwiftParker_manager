@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { getParkingSessions, getUserById,  } from "../../backend/apiFunction";
+import { getParkingSessions, getUserById } from "../../backend/apiFunction";
 import "./ParkingLog.css";
 import { useParams } from "react-router-dom";
 
@@ -14,10 +14,10 @@ const ParkingLog = () => {
       try {
         setLoading(true);
         setError("");
-
+        
         // Fetch sessions for the parking lot
         const sessions = await getParkingSessions(lotId);
-
+        
         // Fetch user details for each session
         const sessionsWithUserData = await Promise.all(
           sessions.map(async (session) => {
@@ -25,8 +25,8 @@ const ParkingLog = () => {
               const user = await getUserById(session.userId);
               return {
                 ...session,
-                userName: user.fullName,
-                userPhone: user.phoneNumber,
+                userName: user.fullName || "Unknown",
+                userPhone: user.phoneNumber || "N/A",
               };
             } catch (err) {
               console.warn(`User not found for session ${session.sessionId}`);
@@ -39,7 +39,12 @@ const ParkingLog = () => {
           })
         );
 
-        setParkingSessions(sessionsWithUserData);
+        // Sort sessions by entry time, most recent first
+        const sortedSessions = sessionsWithUserData.sort((a, b) => 
+          new Date(b.entryTime) - new Date(a.entryTime)
+        );
+
+        setParkingSessions(sortedSessions);
       } catch (err) {
         console.error("Error fetching parking sessions:", err);
         setError("Failed to load parking log.");
@@ -48,8 +53,10 @@ const ParkingLog = () => {
       }
     };
 
-    fetchParkingSessions();
-  }, []);
+    if (lotId) {
+      fetchParkingSessions();
+    }
+  }, [lotId]);
 
   if (loading) return <div className="loading-message">Loading parking log...</div>;
   if (error) return <div className="error-message">{error}</div>;
@@ -58,7 +65,7 @@ const ParkingLog = () => {
     <div className="parking-log-container">
       <h1 className="parking-log-title">Parking Log</h1>
       <p className="parking-log-description">Detailed log of parking sessions</p>
-      
+     
       <div className="parking-log-table-container">
         <table className="parking-log-table">
           <thead>

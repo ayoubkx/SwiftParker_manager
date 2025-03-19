@@ -13,6 +13,7 @@ import AddHardwareScreen from "./Screens/AddHardwareScreen";
 import AddSensorModuleScreen from "./Screens/AddSensorModuleScreen";
 import AddEntryExitModuleScreen from "./Screens/AddEntryExitModuleScreen";
 
+
 const Stack = createStackNavigator();
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
         <Stack.Screen name="AddHardware" component={AddHardwareScreen} />
         <Stack.Screen name="AddSensorModule" component={AddSensorModuleScreen} />
         <Stack.Screen name="AddEntryExitModule" component={AddEntryExitModuleScreen} />
+        
       </Stack.Navigator>
     </NavigationContainer>
   );

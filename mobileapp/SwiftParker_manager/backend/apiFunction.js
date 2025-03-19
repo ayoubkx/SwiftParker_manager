@@ -213,8 +213,6 @@ export const addDevice = async () => {
   }
 };
 
-//---------add Device to a spot
-
 export const addDeviceToSpot = async (parkingLotId, floorId, rowId, spotNumber, deviceId, sensorId) => {
   try {
 
@@ -231,7 +229,7 @@ export const addDeviceToSpot = async (parkingLotId, floorId, rowId, spotNumber, 
     if (isNaN(spotNumber1Based) || spotNumber1Based < 1) {
       throw new Error('Spot number must be a positive integer (starting from 1)');
     }
-
+    
     // Convert from 1-based (user-facing) to 0-based (array index)
     const spotIndex = spotNumber1Based - 1;
 
@@ -292,17 +290,17 @@ export const addDeviceToSpot = async (parkingLotId, floorId, rowId, spotNumber, 
     // If device already has a spot, check location and sensor constraints
     if (deviceData.spots && deviceData.spots.length > 0) {
       // Check location constraints
-      if (deviceData.parkingLotId !== parkingLotId ||
-          deviceData.floorId !== parseInt(floorId) ||
+      if (deviceData.parkingLotId !== parkingLotId || 
+          deviceData.floorId !== parseInt(floorId) || 
           deviceData.rowId !== rowId) {
         throw new Error('All spots for a device must be in the same parking lot, floor, and row');
       }
 
       // Check if sensorId is already used
       const existingSpot = parkingLotData.floors
-          .find(f => f.floorId === parseInt(floorId))
-          ?.rows.find(r => r.rowId === rowId)
-          ?.spots.find(s => s.deviceId === deviceId);
+        .find(f => f.floorId === parseInt(floorId))
+        ?.rows.find(r => r.rowId === rowId)
+        ?.spots.find(s => s.deviceId === deviceId);
 
       if (existingSpot && existingSpot.sensorId === sensorId) {
         throw new Error(`Sensor ID ${sensorId} is already used by another spot in this device`);
@@ -343,9 +341,9 @@ export const addDeviceToSpot = async (parkingLotId, floorId, rowId, spotNumber, 
     });
 
     // Update device with spot and location information
-    const updatedSpots = deviceData.spots === undefined
-        ? [spotId]
-        : [...deviceData.spots, spotId];
+    const updatedSpots = deviceData.spots === undefined 
+      ? [spotId]
+      : [...deviceData.spots, spotId];
 
     await API.patch(`/device/${deviceId}.json`, {
       spots: updatedSpots,
