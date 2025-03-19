@@ -113,6 +113,9 @@ exports.listPaymentMethods = onCall({
             return {paymentMethods: []};
         }
 
+        // Get the Stripe customer to get the default payment method
+        const customer = await stripe.customers.retrieve(userData.stripeCustomerId);
+
         // Get payment methods from Stripe
         const paymentMethods = await stripe.paymentMethods.list({
             customer: userData.stripeCustomerId,
@@ -128,7 +131,8 @@ exports.listPaymentMethods = onCall({
             const storedData = storedPaymentMethods[pm.id] || {};
             return {
                 ...pm,
-                isDefault: storedData.isDefault || false,
+                customer_invoice_settings: customer.invoice_settings,
+                isDefault: customer.invoice_settings.default_payment_method === pm.id,
                 billingName: storedData.billingName || "",
             };
         });
@@ -139,9 +143,64 @@ exports.listPaymentMethods = onCall({
         throw new Error(error.message);
     }
 });
-
 // Set default payment method
+// Set default payment method - UPDATED to properly update Stripe and database
 exports.setDefaultPaymentMethod = onCall({
+    region: "us-central1",
+}, async (request) => {
+    try {
+        const {userId, paymentMethodId} = request.data;
+
+        // Validate input
+        if (!userId || !paymentMethodId) {
+            throw new Error("User ID and Payment Method ID are required");
+        }
+
+        // Get user's Stripe customer ID
+        const userSnapshot = await admin.database().ref(`/users/${userId}/stripeCustomer`).once("value");
+        const userData = userSnapshot.val();
+
+        if (!userData || !userData.stripeCustomerId) {
+            throw new Error("User has no Stripe customer account");
+        }
+
+        // Update default payment method in Stripe
+        await stripe.customers.update(userData.stripeCustomerId, {
+            invoice_settings: {
+                default_payment_method: paymentMethodId,
+            },
+        });
+
+        // Get all payment methods for the user
+        const paymentMethodsSnapshot = await admin.database().ref(`/users/${userId}/paymentMethods`).once("value");
+        const paymentMethods = paymentMethodsSnapshot.val() || {};
+
+        // Prepare database updates
+        const updates = {};
+
+        // Set all payment methods to non-default
+        Object.keys(paymentMethods).forEach((pmId) => {
+            updates[`/users/${userId}/paymentMethods/${pmId}/isDefault`] = false;
+        });
+
+        // Set the selected payment method as default
+        updates[`/users/${userId}/paymentMethods/${paymentMethodId}/isDefault`] = true;
+
+        // Perform the update
+        await admin.database().ref().update(updates);
+
+        return {
+            success: true,
+            message: "Default payment method updated successfully",
+        };
+    } catch (error) {
+        console.error("Error setting default payment method:", error);
+        throw new Error(error.message);
+    }
+});
+
+// Remove payment method - UPDATED to handle Stripe and database removal
+exports.removePaymentMethod = onCall({
     region: "us-central1",
 }, async (request) => {
     try {
@@ -155,42 +214,6 @@ exports.setDefaultPaymentMethod = onCall({
             throw new Error("User has no Stripe customer account");
         }
 
-        // Set as default in Stripe
-        await stripe.customers.update(userData.stripeCustomerId, {
-            invoice_settings: {
-                default_payment_method: paymentMethodId,
-            },
-        });
-
-        // Update database
-        const paymentMethodsSnapshot = await admin.database().ref(`/users/${userId}/paymentMethods`).once("value");
-        const paymentMethods = paymentMethodsSnapshot.val() || {};
-
-        // Set all to non-default
-        const updates = {};
-        Object.keys(paymentMethods).forEach((pmId) => {
-            updates[`/users/${userId}/paymentMethods/${pmId}/isDefault`] = false;
-        });
-
-        // Set selected one as default
-        updates[`/users/${userId}/paymentMethods/${paymentMethodId}/isDefault`] = true;
-
-        await admin.database().ref().update(updates);
-
-        return {success: true};
-    } catch (error) {
-        console.error("Error setting default payment method:", error);
-        throw new Error(error.message);
-    }
-});
-
-// Remove payment method
-exports.removePaymentMethod = onCall({
-    region: "us-central1",
-}, async (request) => {
-    try {
-        const {userId, paymentMethodId} = request.data;
-
         // Get user's payment methods
         const paymentMethodsSnapshot = await admin.database().ref(`/users/${userId}/paymentMethods`).once("value");
         const paymentMethods = paymentMethodsSnapshot.val() || {};
@@ -200,21 +223,28 @@ exports.removePaymentMethod = onCall({
             throw new Error("Cannot remove the only payment method");
         }
 
-        // Check if it's the default payment method
+        // If removing the default payment method, find another method to set as default
         if (paymentMethods[paymentMethodId]?.isDefault) {
-            throw new Error("Cannot remove the default payment method. Set another method as default first.");
+            const remainingMethodIds = Object.keys(paymentMethods).filter((id) => id !== paymentMethodId);
+            const newDefaultId = remainingMethodIds[0];
+
+            // Set the first remaining method as default
+            await stripe.customers.update(userData.stripeCustomerId, {
+                invoice_settings: {
+                    default_payment_method: newDefaultId,
+                },
+            });
         }
 
-        // Get user's Stripe customer ID
-        const userSnapshot = await admin.database().ref(`/users/${userId}/stripeCustomer`).once("value");
-        const userData = userSnapshot.val();
-
-        if (userData && userData.stripeCustomerId) {
-            // Detach from Stripe
+        // Detach from Stripe
+        try {
             await stripe.paymentMethods.detach(paymentMethodId);
+        } catch (stripeError) {
+            console.error("Error detaching payment method from Stripe:", stripeError);
+            // Continue with database removal even if Stripe detachment fails
         }
 
-        // Remove from database
+        // Remove the specific payment method from the database
         await admin.database().ref(`/users/${userId}/paymentMethods/${paymentMethodId}`).remove();
 
         return {success: true};

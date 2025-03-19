@@ -603,6 +603,12 @@ exports.processParkingPaymentOnExit = onValueUpdated({
             throw new Error("Missing required fields for payment processing");
         }
 
+        // Calculate duration in minutes, rounding up to the next hour
+        const entry = new Date(entryTime);
+        const exit = new Date(exitTime);
+        const durationMinutes = Math.ceil((exit - entry) / (1000 * 60)); // Round up to full minutes
+        const durationHours = Math.ceil(durationMinutes / 60); // Round up to full hours
+
         // Get user data to retrieve Stripe customer
         const userSnapshot = await admin.database().ref(`/users/${userId}`).once("value");
         const userData = userSnapshot.val();
@@ -627,38 +633,30 @@ exports.processParkingPaymentOnExit = onValueUpdated({
             throw new Error("Manager has no Stripe account");
         }
 
-        // Calculate amount to charge
-        const entry = new Date(entryTime);
-        const exit = new Date(exitTime);
-        const durationHours = (exit - entry) / (1000 * 60 * 60);
-
+        // Determine weekend/weekday rates
         const day = entry.getDay();
         const isWeekend = day === 0 || day === 6;
 
-        const hourlyRate = isWeekend ?
-            parkingLotData.hourlyRateWeekend :
-            parkingLotData.hourlyRateWeekday;
+        const hourlyRate = isWeekend ? parkingLotData.hourlyRateWeekend : parkingLotData.hourlyRateWeekday;
+        const dailyRate = isWeekend ? parkingLotData.dailyRateWeekend : parkingLotData.dailyRateWeekday;
 
-        const dailyRate = isWeekend ?
-            parkingLotData.dailyRateWeekend :
-            parkingLotData.dailyRateWeekday;
+        // Calculate the amount using the full hourly or daily rate (rounding to full units)
+        let amount = Math.min(hourlyRate * durationHours, dailyRate);
 
-        // Use daily rate if it's cheaper than hourly
-        let amount = Math.min(
-            hourlyRate * durationHours,
-            dailyRate,
-        );
-
-        // Handle subscription logic if applicable
+        // Handle subscription logic
         if (afterData.isSubscribed === true) {
             console.log(`[PAYMENT] User ${userId} has a subscription, adjusting payment`);
             amount = 0; // Or apply subscription discount
         }
 
-        // Save the calculated amount
+        // Round amount to nearest dollar
+        amount = Math.round(amount);
+
+        // Update session with calculated details
         await admin.database().ref(`/parkingSessions/${sessionId}`).update({
+            duration: durationMinutes,
             amountCharged: amount,
-            duration: Math.round(durationHours * 100) / 100, // Round to 2 decimal places
+            createdAt: admin.database.ServerValue.TIMESTAMP,
         });
 
         // If amount is zero (e.g., for subscribers), mark as paid
@@ -672,8 +670,8 @@ exports.processParkingPaymentOnExit = onValueUpdated({
             return null;
         }
 
-        // Round to nearest cent and convert to cents for Stripe
-        const amountInCents = Math.round(amount * 100);
+        // Convert to cents for Stripe
+        const amountInCents = amount * 100;
 
         // Get user's payment methods
         const paymentMethodsSnapshot = await admin.database().ref(`/users/${userId}/paymentMethods`).once("value");
@@ -681,7 +679,6 @@ exports.processParkingPaymentOnExit = onValueUpdated({
 
         // Find default payment method
         let paymentMethodId = null;
-
         for (const pmId in paymentMethods) {
             if (paymentMethods[pmId].isDefault) {
                 paymentMethodId = pmId;
@@ -714,7 +711,7 @@ exports.processParkingPaymentOnExit = onValueUpdated({
         // Create payment intent
         const paymentIntent = await stripe.paymentIntents.create({
             amount: amountInCents,
-            currency: "usd",
+            currency: "cad",
             customer: userData.stripeCustomer.stripeCustomerId,
             payment_method: paymentMethodId,
             off_session: true,
@@ -864,7 +861,7 @@ exports.manualProcessParkingPayment = onCall({
         // Skip payment processing if amount is zero
         if (amount <= 0) {
             await admin.database().ref(`/parkingSessions/${sessionId}`).update({
-                paymentStatus: "succeeded",
+                paymentStatus: "paid",
                 status: "completed",
                 updatedAt: admin.database.ServerValue.TIMESTAMP,
             });

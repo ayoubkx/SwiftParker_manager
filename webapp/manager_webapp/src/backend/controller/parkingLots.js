@@ -2994,7 +2994,7 @@ export const createParkingSession = async (req, res) => {
     const entryTime = new Date().toISOString();
 
     // Generate a new session ID
-    const sessionRef = await API.post("/parking-Sessions.json", {
+    const sessionRef = await API.post("/parkingSessions.json", {
       entryTime,
       isSubscribed,
       parkingLotId,
@@ -3040,7 +3040,7 @@ export const updateExitTime = async (req, res) => {
 
     const { entryTime } = sessionData;
 
-    // Generate the current timestamp in ISO 8601 format (same as screenshot)
+    // Generate the current timestamp in ISO 8601 format
     const exitTime = new Date().toISOString();
 
     // Calculate the duration in minutes
@@ -3048,22 +3048,21 @@ export const updateExitTime = async (req, res) => {
     const exitDate = new Date(exitTime);
     const durationInMilliseconds = exitDate - entryDate;
 
-    // Convert milliseconds to minutes and round to the nearest minute
-    const durationInMinutes = Math.round(durationInMilliseconds / 60000);
+    // Convert milliseconds to minutes and round up
+    const duration = Math.ceil(durationInMilliseconds / 60000);
 
-    // Set a default charged amount of 5
-    const chargedAmount = 5;
-
-    // Update the parking session with the exit time, duration, and charged amount
-    await API.patch(`/parkingSessions/${sessionId}.json`, { exitTime, durationInMinutes, chargedAmount });
+    // Update the parking session with the exit time and duration
+    await API.patch(`/parkingSessions/${sessionId}.json`, { 
+      exitTime, 
+      duration 
+    });
 
     res.status(200).json({
       success: true,
-      message: "Exit time, duration, and charged amount successfully updated",
+      message: "Exit time and duration successfully updated",
       sessionId,
       exitTime,
-      durationInMinutes,
-      chargedAmount,
+      duration,
     });
   } catch (error) {
     console.error("Error updating exit time:", error);
