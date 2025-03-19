@@ -47,7 +47,7 @@ const ParkingLog = () => {
         setParkingSessions(sortedSessions);
       } catch (err) {
         console.error("Error fetching parking sessions:", err);
-        setError("Failed to load parking log.");
+        setError("Failed to load parking log. No parking sessions were found.");
       } finally {
         setLoading(false);
       }
