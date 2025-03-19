@@ -232,7 +232,7 @@ const ParkingLots = () => {
       });
     } catch (error) {
       console.error("Error adding parking lot:", error);
-      setError("Failed to add parking lot. Please try again.");
+      setError("Failed to find parking lot location Please try with a valid address location.");
     }
   };
   

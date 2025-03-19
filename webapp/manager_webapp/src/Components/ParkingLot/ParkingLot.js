@@ -63,6 +63,12 @@ const ParkingLot = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    
+    const parsedValue = parseFloat(value);
+        // Prevent negative values for rate-related fields
+    if (parsedValue < 0) {
+      return;
+    }
     setFormData((prevData) => ({ ...prevData, [name]: value }));
   };
 
@@ -100,7 +106,7 @@ const ParkingLot = () => {
       alert("Parking lot details updated successfully!");
     } catch (error) {
       console.error("Error updating parking lot:", error);
-      setError("Failed to update parking lot.");
+      setError("Failed to update parking lot. Please use a vlalid location.");
     }
   };
 
@@ -154,27 +160,27 @@ const ParkingLot = () => {
         </tr>
         <tr>
           <td>Hourly Rate (Weekday)</td>
-          <td><input type="number" name="hourlyRateWeekday" value={formData.hourlyRateWeekday} onChange={handleChange}/>
+          <td><input type="number" name="hourlyRateWeekday" value={formData.hourlyRateWeekday} onChange={handleChange} min="0" />
           </td>
         </tr>
         <tr>
           <td>Daily Rate (Weekday)</td>
-          <td><input type="number" name="dailyRateWeekday" value={formData.dailyRateWeekday} onChange={handleChange}/>
+          <td><input type="number" name="dailyRateWeekday" value={formData.dailyRateWeekday} onChange={handleChange} min="0" />
           </td>
         </tr>
         <tr>
           <td>Hourly Rate (Weekend)</td>
-          <td><input type="number" name="hourlyRateWeekend" value={formData.hourlyRateWeekend} onChange={handleChange}/>
+          <td><input type="number" name="hourlyRateWeekend" value={formData.hourlyRateWeekend} onChange={handleChange} min="0" />
           </td>
         </tr>
         <tr>
           <td>Daily Rate (Weekend)</td>
-          <td><input type="number" name="dailyRateWeekend" value={formData.dailyRateWeekend} onChange={handleChange}/>
+          <td><input type="number" name="dailyRateWeekend" value={formData.dailyRateWeekend} onChange={handleChange} min="0" />
           </td>
         </tr>
         <tr>
           <td>Subscription Rate</td>
-          <td><input type="number" name="subscriptionRate" value={formData.subscriptionRate} onChange={handleChange}/>
+          <td><input type="number" name="subscriptionRate" value={formData.subscriptionRate} onChange={handleChange} min="0" />
           </td>
         </tr>
         <tr>
