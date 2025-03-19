@@ -36,12 +36,6 @@ const NavBar = () => {
           <li className="nav-item">
             <Link to="/parking-list" className="nav-links">My Parking Lots</Link>
           </li>
-          <li className="nav-item">
-            <Link to="/payments" className="nav-links">Payments</Link>
-          </li>
-          <li className="nav-item">
-            <Link to="/parkinglog" className="nav-links">Logs</Link>
-          </li>
           <li className="nav-item logout-button" onClick={handleLogout}>
             <span className="nav-links">Logout</span>
           </li>
