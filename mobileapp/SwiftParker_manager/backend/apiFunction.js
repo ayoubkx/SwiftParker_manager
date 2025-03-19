@@ -269,6 +269,7 @@ export const addDeviceToSpot = async (parkingLotId, floorId, rowId, spotNumber, 
     // Get the actual spot using the provided index
     const spot = row.spots[spotIndex];
     const spotId = spot.spotId;
+    const spotType = spot.type;
 
     // Check if spot already has a device
     if (spot.deviceId) {
@@ -350,7 +351,8 @@ export const addDeviceToSpot = async (parkingLotId, floorId, rowId, spotNumber, 
       spots: updatedSpots,
       parkingLotId,
       floorId: parseInt(floorId),
-      rowId: rowId
+      rowId: rowId,
+      type: spotType
     });
 
     return {
@@ -367,3 +369,171 @@ export const addDeviceToSpot = async (parkingLotId, floorId, rowId, spotNumber, 
     };
   }
 };
+
+
+
+
+
+
+
+
+// add device to spot by macAddress
+
+export const addDeviceToSpotByMac = async (
+    parkingLotId,
+    floorId,
+    rowId,
+    spotNumber,
+    macAddress,
+    sensorId
+) => {
+  try {
+    if (!macAddress) {
+      throw new Error('MAC Address is required');
+    }
+
+    if (sensorId === undefined || sensorId === null) {
+      throw new Error('Sensor ID is required when assigning a device');
+    }
+
+    const spotNumber1Based = parseInt(spotNumber);
+    if (isNaN(spotNumber1Based) || spotNumber1Based < 1) {
+      throw new Error('Spot number must be a positive integer (starting from 1)');
+    }
+
+    const spotIndex = spotNumber1Based - 1;
+
+    if (sensorId !== 0 && sensorId !== 1) {
+      throw new Error('Sensor ID must be either 0 or 1');
+    }
+
+    // Get all devices (this can be optimized for large datasets)
+    const allDevicesResponse = await API.get(`/device.json`);
+    const allDevicesData = allDevicesResponse.data;
+
+    if (!allDevicesData) {
+      throw new Error('No devices found');
+    }
+
+    // Find the device by macAddress
+    const foundDeviceEntry = Object.entries(allDevicesData).find(([key, value]) => {
+      return value.macAddress === macAddress;
+    });
+
+    if (!foundDeviceEntry) {
+      throw new Error(`Device with MAC Address ${macAddress} not found`);
+    }
+
+    const [deviceId, deviceData] = foundDeviceEntry;
+
+    // Now proceed as in your original code
+    const parkingLotResponse = await API.get(`/parkingLots/${parkingLotId}.json`);
+    const parkingLotData = parkingLotResponse.data;
+
+    if (!parkingLotData) {
+      throw new Error('Parking lot not found');
+    }
+
+    const floor = parkingLotData.floors.find(f => f.floorId === parseInt(floorId));
+    if (!floor) {
+      throw new Error('Floor not found');
+    }
+
+    const row = floor.rows.find(r => r.rowId === rowId);
+    if (!row) {
+      throw new Error('Row not found');
+    }
+
+    if (spotIndex >= row.spots.length) {
+      throw new Error(`Spot number ${spotNumber1Based} not found. The row only has ${row.spots.length} spots (numbered 1-${row.spots.length}).`);
+    }
+
+    const spot = row.spots[spotIndex];
+    const spotId = spot.spotId;
+    const spotType = spot.type;
+
+    if (spot.deviceId) {
+      throw new Error('Spot already has a device assigned');
+    }
+
+    if (deviceData.spots && deviceData.spots.length >= 2) {
+      throw new Error('Device cannot be assigned to more spots. Maximum limit is 2 spots per device.');
+    }
+
+    if (deviceData.spots && deviceData.spots.length > 0) {
+      if (
+          deviceData.parkingLotId !== parkingLotId ||
+          deviceData.floorId !== parseInt(floorId) ||
+          deviceData.rowId !== rowId
+      ) {
+        throw new Error('All spots for a device must be in the same parking lot, floor, and row');
+      }
+
+      const existingSpot = parkingLotData.floors
+          .find(f => f.floorId === parseInt(floorId))
+          ?.rows.find(r => r.rowId === rowId)
+          ?.spots.find(s => s.deviceId === deviceId);
+
+      if (existingSpot && existingSpot.sensorId === sensorId) {
+        throw new Error(`Sensor ID ${sensorId} is already used by another spot in this device`);
+      }
+    }
+
+    const updatedFloors = parkingLotData.floors.map(f => {
+      if (f.floorId === parseInt(floorId)) {
+        return {
+          ...f,
+          rows: f.rows.map(r => {
+            if (r.rowId === rowId) {
+              return {
+                ...r,
+                spots: r.spots.map((s, index) => {
+                  if (index === spotIndex) {
+                    return {
+                      ...s,
+                      deviceId,
+                      sensorId
+                    };
+                  }
+                  return s;
+                })
+              };
+            }
+            return r;
+          })
+        };
+      }
+      return f;
+    });
+
+    await API.patch(`/parkingLots/${parkingLotId}.json`, {
+      floors: updatedFloors
+    });
+
+    const updatedSpots = deviceData.spots === undefined
+        ? [spotId]
+        : [...deviceData.spots, spotId];
+
+    await API.patch(`/device/${deviceId}.json`, {
+      spots: updatedSpots,
+      parkingLotId,
+      floorId: parseInt(floorId),
+      rowId,
+      type: spotType
+    });
+
+    return {
+      success: true,
+      message: 'Device added to spot successfully',
+      spotId: spotId,
+      spotNumber: spotNumber1Based
+    };
+  } catch (error) {
+    console.error('Error adding device to spot:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to add device to spot'
+    };
+  }
+};
+
