@@ -169,7 +169,11 @@ module.exports = {
     generateAccountLink: managerFunctions.generateAccountLink,
     checkStripeAccountStatus: managerFunctions.checkStripeAccountStatus,
     processParkingPayment: managerFunctions.processParkingPayment,
+    processParkingPaymentOnExit: managerFunctions.processParkingPaymentOnExit,
 
-    // Export the webhook function directly here
+    manualProcessParkingPayment:  managerFunctions.manualProcessParkingPayment,
+    getSessionPaymentDetails:  managerFunctions.getSessionPaymentDetails,
+
+
     stripeWebhook: functions.https.onRequest(app),
 };
