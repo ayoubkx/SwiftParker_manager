@@ -3,14 +3,14 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, FlatList, A
 import { FontAwesome5 } from '@expo/vector-icons';
 import { Camera, CameraView } from 'expo-camera';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getFloors, getFloorSpots, getFloorRows, getRowSpots, addDeviceToSpot } from '../backend/apiFunction';
+import { getFloors, getFloorSpots, getFloorRows, getRowSpots, addDeviceToSpot, addDeviceToSpotByMac } from '../backend/apiFunction';
 
 const AddSensorModuleScreen = ({ navigation }) => {
 
     const [parkingLot, setParkingLot] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    const [deviceID, setDeviceID] = useState('');
+    const [macAddress, setMacAddress] = useState('');
     const [selectedSensor, setSelectedSensor] = useState(null);
     const [selectedFloor, setSelectedFloor] = useState('');
     const [selectedRow, setSelectedRow] = useState('');
@@ -73,7 +73,7 @@ const AddSensorModuleScreen = ({ navigation }) => {
         if (!scanned) {
             setScanned(true);
             setScanning(false);
-            setDeviceID(data);
+            setMacAddress(data);
         }
     };
 
@@ -135,20 +135,21 @@ const AddSensorModuleScreen = ({ navigation }) => {
             return;
         }
 
-        if (!deviceID || !selectedSensor || !selectedFloor || !selectedRow || !selectedSpot) {
+        if (!macAddress || !selectedSensor || !selectedFloor || !selectedRow || !selectedSpot) {
             alert('Please complete all fields.');
             return;
         }
 
         try {
-            const response = await addDeviceToSpot(
+            const response = await addDeviceToSpotByMac(
                 parkingLot.id,
                 selectedFloor,
                 selectedRow,
-                parseInt(selectedSpot)+ 1 ,
-                deviceID,
+                parseInt(selectedSpot) + 1,
+                macAddress,
                 selectedSensor === 'A' ? 0 : 1
             );
+
 
             if (response?.success) {
                 alert(response.message);
@@ -183,13 +184,13 @@ const AddSensorModuleScreen = ({ navigation }) => {
 
             {/* Device ID Input */}
             <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Device ID</Text>
+                <Text style={styles.inputLabel}>Device MAC Address</Text>
                 <View style={styles.inputWithButton}>
                     <TextInput
                         style={styles.input}
-                        placeholder="Enter Device ID"
-                        value={deviceID}
-                        onChangeText={setDeviceID}
+                        placeholder="Enter Device MAC Address"
+                        value={macAddress}
+                        onChangeText={setMacAddress}
                     />
                     <TouchableOpacity
                         style={styles.scanButton}
