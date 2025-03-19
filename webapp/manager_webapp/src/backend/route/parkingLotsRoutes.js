@@ -23,7 +23,11 @@ import {
   addQrScanner,
   addQrScannerToParkingLot,
   removeQrScannerFromParkingLot,
-  deleteQrScanner
+  deleteQrScanner,
+  deleteStripeAccount,
+  createParkingSession,
+  updateExitTime
+
 } from '../controller/parkingLots.js';
 
 export default function setupParkingLotRoutes(app) {
@@ -63,5 +67,11 @@ app.patch('/api/qrscanner/:QrScannerId/parkingLot/:parkingLotId', addQrScannerTo
 app.patch('/api/qrscanner/:QrScannerId/removeParkingLot', removeQrScannerFromParkingLot);
 app.delete('/api/qrscanner/:QrScannerId', deleteQrScanner);
 
+// delete an stripe account
+app.delete('/api/stripeAccount/:accountId', deleteStripeAccount );
+
+//Parking Session
+app.post('/api/parkingSession', createParkingSession);
+app.patch('/api/parkingSession/:sessionId/exit', updateExitTime);
 }
 
