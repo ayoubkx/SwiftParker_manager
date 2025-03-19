@@ -9,24 +9,24 @@ const AddHardwareScreen = ({ navigation }) => {
         const checkSession = async () => {
             const session = await AsyncStorage.getItem('userSession');
             if (!session) {
-                navigation.replace('Login'); // Redirect if no session
+                navigation.replace('Login');
             }
         };
         checkSession();
     }, []);
 
-
     const handleSelection = (type) => {
         if (type === "entry_exit") {
-            navigation.navigate("AddEntryExitModule"); // Correct screen name
+            navigation.navigate("AddEntryExitModule");
         } else if (type === "sensor") {
-            navigation.navigate("AddSensorModule"); // Correct screen name
+            navigation.navigate("AddSensorModule");
+        } else if (type === "edit_sensor") {
+            navigation.navigate("EditSensor"); // New screen name (make sure it matches your navigator)
         }
     };
 
     return (
         <View style={styles.container}>
-            {/* Back Button */}
             <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
                 <FontAwesome5 name="arrow-left" size={24} color="#073b4c" />
             </TouchableOpacity>
@@ -34,16 +34,20 @@ const AddHardwareScreen = ({ navigation }) => {
             <Text style={styles.title}>Select Hardware Type</Text>
 
             <View style={styles.grid}>
-                {/* Entry/Exit Module */}
                 <TouchableOpacity style={styles.option} onPress={() => handleSelection("entry_exit")}>
                     <FontAwesome5 name="warehouse" size={50} color="#073b4c" />
                     <Text style={styles.optionText}>Entry/Exit Module</Text>
                 </TouchableOpacity>
 
-                {/* Sensor Module */}
                 <TouchableOpacity style={styles.option} onPress={() => handleSelection("sensor")}>
                     <FontAwesome5 name="car" size={50} color="#073b4c" />
                     <Text style={styles.optionText}>Sensor Module</Text>
+                </TouchableOpacity>
+
+                {/* New Option for Editing Sensor Modules */}
+                <TouchableOpacity style={styles.option} onPress={() => handleSelection("edit_sensor")}>
+                    <FontAwesome5 name="edit" size={50} color="#073b4c" />
+                    <Text style={styles.optionText}>Edit Sensor Modules</Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -57,11 +61,11 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         paddingHorizontal: 20,
-        paddingTop: 60, // Added padding to prevent overlap with back button
+        paddingTop: 60,
     },
     backButton: {
         position: 'absolute',
-        top: 60, // Adjusted for better alignment
+        top: 60,
         left: 20,
         zIndex: 10,
     },
@@ -73,6 +77,7 @@ const styles = StyleSheet.create({
     },
     grid: {
         flexDirection: 'row',
+        flexWrap: 'wrap', // Enable wrapping if you add more options
         justifyContent: 'center',
         width: '100%',
     },

@@ -12,6 +12,7 @@ import CheckPlatesScreen from "./Screens/CheckPlatesScreen";
 import AddHardwareScreen from "./Screens/AddHardwareScreen";
 import AddSensorModuleScreen from "./Screens/AddSensorModuleScreen";
 import AddEntryExitModuleScreen from "./Screens/AddEntryExitModuleScreen";
+import EditSensorModule from "./Screens/EditSensorModule";
 
 const Stack = createStackNavigator();
 
@@ -26,6 +27,7 @@ function App() {
         <Stack.Screen name="CheckPlates" component={CheckPlatesScreen} />
         <Stack.Screen name="AddHardware" component={AddHardwareScreen} />
         <Stack.Screen name="AddSensorModule" component={AddSensorModuleScreen} />
+        <Stack.Screen name="EditSensor" component={EditSensorModule} />
         <Stack.Screen name="AddEntryExitModule" component={AddEntryExitModuleScreen} />
       </Stack.Navigator>
     </NavigationContainer>
