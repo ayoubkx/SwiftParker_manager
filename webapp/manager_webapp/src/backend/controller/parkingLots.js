@@ -1230,6 +1230,8 @@
 //----------- add a parking lot for an existing manager
 
 import API from '../api.js';
+import Stripe from 'stripe';
+const stripe = new Stripe('sk_test_51R3RO44I2CoMhqZ1CmQvbeNH6hzLmUXV1eBCtJjWvVpHusm6IRrna5TwJiHEzAMTsYuMGCr3TUSlAoxw6RN7B03R00XMx2mAjI');
 export const addParkingLot = async (req, res) => {
   try {
     const { 
@@ -2936,3 +2938,36 @@ export const deleteQrScanner = async (req, res) => {
   }
 };
 
+
+export const deleteStripeAccount = async (req, res) => {
+  try {
+    const { accountId } = req.params;
+
+    console.log('Received accountId:', accountId); // Debug log
+
+    if (!accountId || typeof accountId !== 'string') {
+      return res.status(400).json({ error: 'Invalid accountId' });
+    }
+
+    // Ensure accountId format is valid
+    if (!/^acct_[a-zA-Z0-9]+$/.test(accountId)) {
+      return res.status(400).json({ error: 'Invalid accountId format' });
+    }
+
+    const account = await stripe.accounts.retrieve(accountId);
+    if (!account) {
+      return res.status(404).json({ error: 'Stripe account not found' });
+    }
+
+    await stripe.accounts.del(accountId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Stripe account successfully deleted',
+      accountId
+    });
+  } catch (error) {
+    console.error('Error deleting Stripe account:', error);
+    res.status(500).json({ error: 'Failed to delete Stripe account' });
+  }
+};
