@@ -34,9 +34,6 @@ const NavBar = () => {
 
         <ul className="nav-menu">
           <li className="nav-item">
-            <Link to="/crud" className="nav-links">Users</Link>
-          </li>
-          <li className="nav-item">
             <Link to="/parking-list" className="nav-links">My Parking Lots</Link>
           </li>
           <li className="nav-item">

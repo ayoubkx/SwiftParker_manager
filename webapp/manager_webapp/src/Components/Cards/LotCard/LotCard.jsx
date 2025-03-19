@@ -1,14 +1,14 @@
 import React from "react";
 import "./LotCard.css";
 
-const LotCard = ({ lot, onManageLot }) => {
+const LotCard = ({ lot, onManageLot, onCRUD, onParkingLogs }) => {
   const { id, name, image, location } = lot;
 
   return (
     <div className="lot-card-container">
       <div className="lot-card-header">
         <img
-          src={image || "https://www.shutterstock.com/image-photo/indoor-full-modern-parking-supermarket-600w-1276486783.jpg"}
+          src={image || "https://media.istockphoto.com/id/1083622428/fr/vectoriel/ic%C3%B4ne-de-stationnement-de-voiture.jpg?s=612x612&w=0&k=20&c=CvZiRcQXZhmHUSaQsCY2GcuVvAb4955jEoWe5nBOIPI="}
           alt={`Parking Lot ${name}`}
           className="lot-card-image"
         />
@@ -23,6 +23,18 @@ const LotCard = ({ lot, onManageLot }) => {
           onClick={() => onManageLot(id)}
         >
           Manage Lot
+        </button>
+        <button
+          className="lot-card-button"
+          onClick={() => onCRUD(id)}
+        >
+          Manage Users
+        </button>
+        <button
+          className="lot-card-button"
+          onClick={() => onParkingLogs(id)}
+        >
+          View Session Logs
         </button>
       </div>
     </div>

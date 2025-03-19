@@ -57,6 +57,24 @@ const ParkingLots = () => {
       console.error("Error fetching parking lot details:", error);
     }
   };
+
+  const handleCRUD = async (lotId) => {
+    try {
+      const parkingLotInfo = await getParkingLot(lotId);
+      navigate(`/crud/${lotId}`, { state: { parkingLot: parkingLotInfo } });
+    } catch (error) {
+      console.error("Error fetching parking lot details:", error);
+    }
+  };
+
+  const handleParkingLogs = async (lotId) => {
+    try {
+      const parkingLotInfo = await getParkingLot(lotId);
+      navigate(`/parkinglog/${lotId}`, { state: { parkingLot: parkingLotInfo } });
+    } catch (error) {
+      console.error("Error fetching parking lot details:", error);
+    }
+  };
   
 
   const handleAddParkingLot = () => {
@@ -65,7 +83,7 @@ const ParkingLots = () => {
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
-    
+  
     // Handle phone number separately using PhoneInput
     if (name === "phoneNumber") {
       setFormData((prevData) => ({
@@ -75,10 +93,24 @@ const ParkingLots = () => {
       return;
     }
   
-    setFormData((prevData) => ({
-      ...prevData,
-      [name]: value,
-    }));
+    // Prevent negative values for rate fields
+    if (
+      name === "hourlyRateWeekday" ||
+      name === "dailyRateWeekday" ||
+      name === "hourlyRateWeekend" ||
+      name === "dailyRateWeekend" ||
+      name === "subscriptionRate"
+    ) {
+      const parsedValue = parseFloat(value);
+      if (parsedValue < 0) {
+        // If the value is negative, set it to 0
+        setFormData((prevData) => ({
+          ...prevData,
+          [name]: 0,
+        }));
+        return;
+      }
+    }
   
     // Handle floors separately
     if (name === "floors") {
@@ -91,7 +123,14 @@ const ParkingLots = () => {
         floors: Number(value),
         floorData: updatedFloorData,
       }));
+      return;
     }
+  
+    // Update other fields
+    setFormData((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }));
   };
   
   
@@ -213,7 +252,7 @@ const ParkingLots = () => {
       <div className="parking-lots-grid">
         {parkingLots.length > 0 ? (
           parkingLots.map((lot) => (
-            <LotCard key={lot.id} lot={lot} onManageLot={handleManageLot} />
+            <LotCard key={lot.id} lot={lot} onManageLot={handleManageLot} onCRUD={handleCRUD} onParkingLogs={handleParkingLogs} />
           ))
         ) : (
           <div className="no-lots-message">No parking lots found.</div>
@@ -221,7 +260,7 @@ const ParkingLots = () => {
       </div>
       <div className="add-parking-lot-container">
         <button className="add-parking-lot-button" onClick={handleAddParkingLot}>
-          Add New Parking Lot
+          Set-up Parking Lot
         </button>
       </div>
 

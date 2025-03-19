@@ -1,233 +1,182 @@
-.crud-container {
+/* Updated Container */
+.crud-container-v2 {
   width: 90%;
-  max-width: 1000px;
+  max-width: 1200px; /* Slightly wider for better spacing */
   margin: 40px auto;
   text-align: center;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
   align-items: center;
-  gap: 40px;
+  gap: 30px; /* Reduced gap for tighter layout */
 }
 
-.crud-title{
-  font-family: "Roboto", sans-serif; /* Customize font */
-  font-size: 2rem; /* Customize size */
-  font-weight: 700; /* Customize boldness */
-  color: #333; /* Customize text color */
-  padding: 15px; /* Optional: Add padding for spacing */
-  border-radius: 8px; /* Optional: Add rounded corners */
-  text-align: center; /* Center the title text */
-  margin-bottom: 20px; /* Add spacing below the title */
-
+/* Updated Title */
+.crud-title-v2 {
+  font-family: "Arial", sans-serif;
+  font-size: 3rem;
+  font-weight: 700;
+  color: #333;
+  text-align: center;
+  margin-bottom: 0;
 }
 
-table {
+/* Updated Table */
+.crud-table-v2 {
   width: 100%;
   border-collapse: collapse;
   margin-bottom: 30px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  table-layout: auto; 
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1); /* Deeper shadow */
+  table-layout: auto;
+  border-radius: 12px; /* Rounded corners for the table */
+  overflow: hidden; /* Ensures rounded corners are visible */
 }
 
-table th,
-table td {
-  padding: 15px;
-  border: 1px solid #ccc;
+.crud-table-v2 th,
+.crud-table-v2 td {
+  padding: 16px; /* Slightly more padding */
+  border: 1px solid #e0e0e0; /* Lighter border color */
   text-align: left;
   font-size: 1rem;
-  overflow: hidden; 
-  text-overflow: ellipsis; 
-  white-space: nowrap; 
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-table th {
-  background-color: #f4f4f4;
-  font-weight: bold;
+.crud-table-v2 th {
+  background-color: #2c3e50; /* Darker header */
+  color: #fff; /* White text for contrast */
+  font-weight: 600; /* Slightly less bold */
   text-transform: uppercase;
 }
 
-table tr:nth-child(even) {
-  background-color: #f9f9f9;
+.crud-table-v2 tr:nth-child(even) {
+  background-color: #f8f9fa; /* Lighter alternate row color */
 }
 
-table tr:hover {
-  background-color: #f1f1f1;
+.crud-table-v2 tr:hover {
+  background-color: #e9ecef; /* Subtle hover effect */
 }
 
-button {
-  padding: 10px 16px;
+/* Updated Buttons */
+.crud-button-v2 {
+  padding: 12px 20px;
   margin: 0 5px;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px; /* More rounded corners */
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   transition: background-color 0.3s ease, transform 0.2s ease;
-  width: 100px; 
+  width: 110px; /* Slightly wider */
+  font-weight: 500; /* Medium weight for better readability */
 }
 
-button:hover {
+.crud-button-v2:hover {
   opacity: 0.9;
   transform: scale(1.05);
 }
 
-button:nth-child(1) {
-  background-color: #3277d8; 
+.crud-button-v2.primary {
+  background-color: #3498db; /* Brighter primary color */
   color: white;
 }
 
-button:nth-child(2) {
-  background-color: #d83232; 
+.crud-button-v2.danger {
+  background-color: #e74c3c; /* Brighter danger color */
   color: white;
 }
-.close-button {
-  background-color: #d83232;
+
+.crud-button-v2.close {
+  background-color: #e74c3c;
 }
 
-.close-button:hover {
-  background-color: #a82727;
+.crud-button-v2.close:hover {
+  background-color: #c0392b; /* Darker hover for close button */
 }
 
-.add-form,
-.edit-form {
+/* Updated Forms */
+.crud-form-v2 {
   margin-top: 20px;
-  padding: 20px;
+  padding: 25px; /* More padding */
   background: #fff;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e0e0e0; /* Lighter border */
+  border-radius: 12px; /* More rounded corners */
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1); /* Deeper shadow */
   width: 100%;
   max-width: 500px;
 }
 
-.add-form input,
-.edit-form input {
+.crud-form-v2 input {
   padding: 12px;
   margin: 10px 0;
   width: calc(100% - 24px);
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  border: 1px solid #e0e0e0; /* Lighter border */
+  border-radius: 6px; /* More rounded corners */
   font-size: 1rem;
+  transition: border-color 0.3s ease;
 }
 
-.add-form label,
-.edit-form label {
+.crud-form-v2 input:focus {
+  border-color: #3498db; /* Highlight focus with primary color */
+  outline: none;
+}
+
+.crud-form-v2 label {
   display: flex;
   align-items: center;
-  font-size: 0.9rem;
-  margin-bottom: 10px;
-  justify-content: flex-start;
+  font-size: 0.95rem; /* Slightly larger */
+  margin-bottom: 12px; /* More spacing */
+  color: #2c3e50; /* Darker text for better readability */
 }
 
-.add-form label span,
-.edit-form label span {
-  margin-right: 10px;
+.crud-form-v2 label span {
+  margin-right: 12px; /* More spacing */
 }
 
-.add-form input[type="checkbox"],
-.edit-form input[type="checkbox"] {
+.crud-form-v2 input[type="checkbox"] {
   margin-right: 0;
 }
 
-.add-form button,
-.edit-form button {
+.crud-form-v2 .form-buttons-v2 {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px; /* More spacing */
+  margin-top: 15px; /* More spacing */
+}
+
+.crud-form-v2 button {
   padding: 12px 20px;
-  background-color: #3277d8;
+  background-color: #3498db; /* Brighter primary color */
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px; /* More rounded corners */
   cursor: pointer;
-  width: 100%;
   font-size: 1rem;
   transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
-.add-form button:hover,
-.edit-form button:hover {
-  opacity: 0.9;
+.crud-form-v2 button:hover {
+  background-color: #2980b9; /* Darker hover */
   transform: scale(1.05);
 }
 
-.add-user-button {
+/* Add User Button */
+.crud-add-user-button-v2 {
   padding: 12px 20px;
-  background-color: #3277d8;
+  background-color: #3498db; /* Brighter primary color */
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px; /* More rounded corners */
   cursor: pointer;
   font-size: 1rem;
   margin: 20px 0;
-  width: 150px; 
+  width: 160px; /* Slightly wider */
   text-align: center;
-  white-space: nowrap; 
+  white-space: nowrap;
   transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
-.add-user-button:hover {
-  background-color: #275ea8;
+.crud-add-user-button-v2:hover {
+  background-color: #2980b9; /* Darker hover */
   transform: scale(1.05);
 }
-
-.add-form {
-  margin-top: 20px;
-  padding: 20px;
-  background: #fff;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  width: 100%;
-  max-width: 500px;
-}
-
-.add-form input {
-  padding: 12px;
-  margin: 10px 0;
-  width: calc(100% - 24px);
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 1rem;
-}
-
-.add-form label {
-  display: flex;
-  align-items: center;
-  font-size: 0.9rem;
-  margin-bottom: 10px;
-}
-
-.add-form label span {
-  margin-right: 10px;
-}
-
-.add-form input[type="checkbox"] {
-  margin-right: 0;
-}
-
-.form-buttons {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 10px;
-}
-
-.add-form button,
-.edit-form button {
-  padding: 12px 20px;
-  background-color: #3277d8;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 1rem;
-  transition: background-color 0.3s ease, transform 0.2s ease;
-}
-
-.add-form button:hover,
-.edit-form button:hover {
-  background-color: #275ea8;
-  transform: scale(1.05);
-}
-
-
-
-

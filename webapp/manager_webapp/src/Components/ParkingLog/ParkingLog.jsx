@@ -1,88 +1,93 @@
 import React, { useState, useEffect } from "react";
+import { getParkingSessions, getUserById,  } from "../../backend/apiFunction";
 import "./ParkingLog.css";
+import { useParams } from "react-router-dom";
 
 const ParkingLog = () => {
-  // State to store parking events
-  const [parkingEvents, setParkingEvents] = useState([]);
+  const { lotId } = useParams();
+  const [parkingSessions, setParkingSessions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  // Simulate real-time data fetching
   useEffect(() => {
-    const fetchParkingEvents = () => {
-      // Mock data for demonstration
-      const mockData = [
-        {
-          eventId: 1,
-          lotId: "LOT001",
-          userId: "USER123",
-          entryTime: "2023-10-01 10:00:00",
-          exitTime: "2023-10-01 12:00:00",
-          isPrivate: false,
-        },
-        {
-          eventId: 2,
-          lotId: "LOT002",
-          userId: "USER456",
-          entryTime: "2023-10-01 11:30:00",
-          exitTime: "2023-10-01 14:00:00",
-          isPrivate: true,
-        },
-        {
-          eventId: 3,
-          lotId: "LOT001",
-          userId: "USER789",
-          entryTime: "2023-10-01 13:00:00",
-          exitTime: "N/A",
-          isPrivate: false,
-        },
-      ];
+    const fetchParkingSessions = async () => {
+      try {
+        setLoading(true);
+        setError("");
 
-      // Update the state with new data
-      setParkingEvents(mockData);
+        // Fetch sessions for the parking lot
+        const sessions = await getParkingSessions(lotId);
+
+        // Fetch user details for each session
+        const sessionsWithUserData = await Promise.all(
+          sessions.map(async (session) => {
+            try {
+              const user = await getUserById(session.userId);
+              return {
+                ...session,
+                userName: user.fullName,
+                userPhone: user.phoneNumber,
+              };
+            } catch (err) {
+              console.warn(`User not found for session ${session.sessionId}`);
+              return {
+                ...session,
+                userName: "Unknown",
+                userPhone: "N/A",
+              };
+            }
+          })
+        );
+
+        setParkingSessions(sessionsWithUserData);
+      } catch (err) {
+        console.error("Error fetching parking sessions:", err);
+        setError("Failed to load parking log.");
+      } finally {
+        setLoading(false);
+      }
     };
 
-    // Fetch data initially
-    fetchParkingEvents();
-
-    // Simulate real-time updates every 5 seconds
-    const interval = setInterval(fetchParkingEvents, 5000);
-
-    // Cleanup interval on component unmount
-    return () => clearInterval(interval);
+    fetchParkingSessions();
   }, []);
+
+  if (loading) return <div className="loading-message">Loading parking log...</div>;
+  if (error) return <div className="error-message">{error}</div>;
 
   return (
     <div className="parking-log-container">
       <h1 className="parking-log-title">Parking Log</h1>
-      <p className="parking-log-description">
-        Real-time notifications for parking events.
-      </p>
+      <p className="parking-log-description">Detailed log of parking sessions</p>
+      
       <div className="parking-log-table-container">
         <table className="parking-log-table">
           <thead>
             <tr>
-              <th>Event ID</th>
-              <th>Lot ID</th>
-              <th>User ID</th>
+              <th>Session ID</th>
+              <th>User Name</th>
+              <th>Phone Number</th>
               <th>Entry Time</th>
               <th>Exit Time</th>
-              <th>Private</th>
+              <th>Duration (hrs)</th>
+              <th>Amount Charged ($)</th>
+              <th>Payment Status</th>
             </tr>
           </thead>
           <tbody>
-            {parkingEvents.map((event) => (
-              <tr key={event.eventId}>
-                <td>{event.eventId}</td>
-                <td>{event.lotId}</td>
-                <td>{event.userId}</td>
-                <td>{event.entryTime}</td>
-                <td>{event.exitTime}</td>
+            {parkingSessions.map((session) => (
+              <tr key={session.sessionId}>
+                <td>{session.sessionId}</td>
+                <td>{session.userName}</td>
+                <td>{session.userPhone}</td>
+                <td>{new Date(session.entryTime).toLocaleString()}</td>
                 <td>
-                  <span
-                    className={`private-status ${
-                      event.isPrivate ? "private" : "public"
-                    }`}
-                  >
-                    {event.isPrivate ? "Yes" : "No"}
+                  {session.exitTime ? new Date(session.exitTime).toLocaleString() : "Ongoing"}
+                </td>
+                <td>{session.duration}</td>
+                <td>${session.amountCharged}</td>
+                <td>
+                  <span className={`payment-status ${session.paymentStatus.toLowerCase()}`}>
+                    {session.paymentStatus}
                   </span>
                 </td>
               </tr>
