@@ -21,11 +21,13 @@ const Register = () => {
     const [successMessage, setSuccessMessage] = useState('')
     const [showStripeRedirect, setShowStripeRedirect] = useState(false)
     const [stripeOnboardingUrl, setStripeOnboardingUrl] = useState('')
+    const [registrationCompleted, setRegistrationCompleted] = useState(false)
 
     // Check for Stripe onboarding URL in session storage
     useEffect(() => {
         const onboardingUrl = sessionStorage.getItem('stripeOnboardingUrl')
         if (onboardingUrl) {
+            console.log("Found Stripe onboarding URL in session:", onboardingUrl)
             setStripeOnboardingUrl(onboardingUrl)
             setShowStripeRedirect(true)
         }
@@ -66,26 +68,42 @@ const Register = () => {
                     phoneNumber: formData.phoneNumber
                 }
                 
-                // Try to register the user - this will also create a Stripe Connect account
-                // If Stripe setup fails, the entire registration will fail
-                await doCreateUserWithEmailAndPassword(formData.email, formData.password, userData);
+                console.log("Starting registration with user data:", { 
+                    email: formData.email, 
+                    firstName: userData.firstName,
+                    lastName: userData.lastName 
+                })
                 
-                // If we reach here, the registration including Stripe setup was successful
-                // Check for the onboarding URL in session storage
-                const onboardingUrl = sessionStorage.getItem('stripeOnboardingUrl');
+                // Register the user and get the result
+                const regResult = await doCreateUserWithEmailAndPassword(
+                    formData.email, 
+                    formData.password, 
+                    userData
+                )
+                
+                console.log("Registration successful, checking for Stripe onboarding URL")
+                
+                // Check for onboarding URL in the result or session storage
+                let onboardingUrl = regResult.stripeOnboardingUrl
+                if (!onboardingUrl) {
+                    onboardingUrl = sessionStorage.getItem('stripeOnboardingUrl')
+                }
                 
                 if (onboardingUrl) {
-                    // Show the Stripe onboarding page
-                    setStripeOnboardingUrl(onboardingUrl);
-                    setSuccessMessage('Account created successfully! Complete your Stripe Connect onboarding to start accepting payments.');
-                    setShowStripeRedirect(true);
+                    console.log("Stripe onboarding URL found, showing redirect screen")
+                    setStripeOnboardingUrl(onboardingUrl)
+                    setSuccessMessage('Account created successfully! Complete your Stripe Connect onboarding to start accepting payments.')
+                    setShowStripeRedirect(true)
+                    setRegistrationCompleted(true)
                 } else {
-                    // This should not happen since we now require Stripe setup to succeed
-                    setErrorMessage('Your account was created, but we encountered an issue with Stripe setup. Please contact support.');
-                    navigate('/dashboard');
+                    // This should not happen with the updated auth code that enforces
+                    // Stripe setup, but handle it just in case
+                    console.error("No Stripe onboarding URL found after successful registration")
+                    setErrorMessage('Registration completed but Stripe setup failed. Please contact support.')
                 }
             } catch (error) {
-                setErrorMessage(error.message)
+                console.error("Registration error:", error)
+                setErrorMessage(error.message || 'Registration failed. Please try again.')
             } finally {
                 setIsRegistering(false)
             }
@@ -95,29 +113,37 @@ const Register = () => {
     const handleStripeRedirect = () => {
         // Navigate to Stripe onboarding URL
         if (stripeOnboardingUrl) {
-            console.log("Redirecting to Stripe onboarding URL:", stripeOnboardingUrl);
+            console.log("Redirecting to Stripe onboarding URL:", stripeOnboardingUrl)
             
             // Open in same window
-            window.location.href = stripeOnboardingUrl;
+            window.location.href = stripeOnboardingUrl
             
             // Remove the URL from session storage to avoid issues if the user returns
-            sessionStorage.removeItem('stripeOnboardingUrl');
+            sessionStorage.removeItem('stripeOnboardingUrl')
         } else {
-            console.error("No Stripe onboarding URL available for redirect");
-            setErrorMessage("No Stripe onboarding URL available. Please try again later.");
+            console.error("No Stripe onboarding URL available for redirect")
+            setErrorMessage("No Stripe onboarding URL available. Please try again later.")
         }
     }
 
     const skipStripeOnboarding = () => {
+        // This function should only be accessible if registration was actually completed
+        if (!registrationCompleted) {
+            console.error("Attempting to skip onboarding without completed registration")
+            setErrorMessage("Registration has not been completed. Please try again.")
+            return
+        }
+        
         // Clear the URL and redirect to dashboard
         sessionStorage.removeItem('stripeOnboardingUrl')
         navigate('/dashboard')
     }
     
-    // Function to handle direct redirect to Stripe
-    // Using it as a utility function for handleStripeRedirect
-
-    if (userLoggedIn && !showStripeRedirect) {
+    // Important: Only redirect to dashboard if both conditions are met:
+    // 1. User is logged in (userLoggedIn is true)
+    // 2. We're not showing the Stripe redirect screen
+    // 3. Registration has been completed successfully
+    if (userLoggedIn && !showStripeRedirect && registrationCompleted) {
         return <Navigate to={'/dashboard'} replace={true} />
     }
 
@@ -148,12 +174,15 @@ const Register = () => {
                             Complete Stripe Onboarding
                         </button>
                         
-                        <button 
-                            onClick={skipStripeOnboarding}
-                            className="skip-button"
-                        >
-                            Skip for now (You can complete this later)
-                        </button>
+                        {/* Only show skip button if registration was actually completed */}
+                        {registrationCompleted && (
+                            <button 
+                                onClick={skipStripeOnboarding}
+                                className="skip-button"
+                            >
+                                Skip for now (You can complete this later)
+                            </button>
+                        )}
                         
                         {errorMessage && <div className="error-message">{errorMessage}</div>}
                     </div>

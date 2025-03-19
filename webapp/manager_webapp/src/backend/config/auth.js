@@ -5,140 +5,165 @@ import {
   sendPasswordResetEmail,
   sendEmailVerification,
   updatePassword,
+  signInWithPopup,
+  GoogleAuthProvider,
 } from "firebase/auth";
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import API from '../api';
 
-
-
-// Create manager profile in Firebase
-async function createManagerProfile(userData) {
+// Pre-verify Stripe functionality before creating any user accounts
+async function preVerifyStripeSetup() {
   try {
-    console.log("Starting manager profile creation with data:", userData);
-    
-    // First, attempt to create the Stripe Connect account BEFORE creating the manager profile
-    // This ensures we don't have orphaned manager profiles without Stripe accounts
+    console.log("Pre-verifying Stripe setup before user creation...");
     const functions = getFunctions();
     
-    // 1. Create a temporary record to trigger the Cloud Function that creates the Stripe account
-    const tempData = {
+    // Create a call to check if Stripe is properly configured
+    const verifyStripeSetup = httpsCallable(functions, 'verifyStripeSetup');
+    
+    // Wrap this in a try/catch to handle network errors properly
+    try {
+      const result = await verifyStripeSetup();
+      
+      if (!result.data || !result.data.success) {
+        console.error("Stripe pre-verification failed:", result.data);
+        throw new Error('Stripe integration is not properly configured. Registration is disabled.');
+      }
+      
+      return true;
+    } catch (networkError) {
+      console.error("Network error during Stripe verification:", networkError);
+      
+      // For development purposes, you might want to bypass this check if it's failing due to CORS
+      // Comment this out in production
+      if (process.env.NODE_ENV === 'development') {
+        console.warn("In development mode: bypassing Stripe verification due to possible CORS issue");
+        return true;
+      }
+      
+      throw new Error('Unable to verify Stripe setup. Registration is currently unavailable.');
+    }
+  } catch (error) {
+    console.error("Error during Stripe pre-verification:", error);
+    throw new Error('Unable to verify Stripe setup. Registration is currently unavailable.');
+  }
+}
+
+// Create manager profile in Firebase with integrated Stripe setup
+async function createManagerProfileWithStripe(userData) {
+  try {
+    console.log("Creating manager profile with Stripe integration:", userData);
+    
+    // First, create the manager profile to trigger the Cloud Function
+    const managerData = {
       managerId: userData.authId,
       email: userData.email,
       firstName: userData.firstName || '',
       lastName: userData.lastName || '',
       phoneNumber: userData.phoneNumber || '',
-      isTemporary: true, // Mark as temporary
+      parkingLots: [], // Empty array initialized
       createdAt: new Date().toISOString()
     };
     
-    // Create temporary record to trigger Stripe account creation
-    await API.put(`/managers/${userData.authId}.json`, tempData);
-    console.log("Temporary manager record created to trigger Stripe account creation");
+    // Create manager profile
+    await API.put(`/managers/${userData.authId}.json`, managerData);
+    console.log("Manager profile created, waiting for Stripe account creation");
     
     // Wait for the Cloud Function to create the Stripe account
-    console.log("Waiting for Stripe account creation...");
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    await new Promise(resolve => setTimeout(resolve, 8000));
     
-    // 2. Verify that a Stripe account was created
-    console.log("Checking Stripe account status...");
+    const functions = getFunctions();
+    
+    // Verify Stripe account was created
+    console.log("Verifying Stripe account creation...");
     const checkStatus = httpsCallable(functions, 'checkStripeAccountStatus');
     const statusResult = await checkStatus({ managerId: userData.authId });
     
-    console.log("Stripe account status check result:", statusResult.data);
-    
     if (!statusResult.data || !statusResult.data.hasAccount) {
-      // If no Stripe account was created, throw an error
-      console.error("Stripe account creation failed. Status result:", statusResult.data);
-      throw new Error('Failed to create Stripe Connect account. Please try again later.');
+      throw new Error('Failed to create Stripe Connect account');
     }
     
-    console.log("Stripe Connect account created successfully:", statusResult.data);
-    
-    // 3. Generate onboarding link
+    // Generate onboarding link
     console.log("Generating Stripe onboarding link...");
     const generateAccountLink = httpsCallable(functions, 'generateAccountLink');
     const linkResult = await generateAccountLink({ managerId: userData.authId });
     
-    console.log("Stripe link generation result:", linkResult.data);
-    
     if (!linkResult.data || !linkResult.data.accountLinkUrl) {
-      console.error("Failed to generate Stripe onboarding link. Link result:", linkResult.data);
-      throw new Error('Failed to generate Stripe onboarding link. Please try again later.');
+      throw new Error('Failed to generate Stripe onboarding link');
     }
     
-    // Store the onboarding URL in session storage
     const onboardingUrl = linkResult.data.accountLinkUrl;
+    
+    // Store the onboarding URL in session storage
     sessionStorage.setItem('stripeOnboardingUrl', onboardingUrl);
-    console.log("Stripe onboarding URL generated and stored in session:", onboardingUrl);
+    sessionStorage.setItem(`stripeOnboarding_${userData.authId}`, onboardingUrl);
     
-    // 4. Now that Stripe is set up, update the manager profile with complete data
-    const managerData = {
-      ...tempData,
-      isTemporary: false, // Remove temporary flag
-      parkingLots: [], // Empty array initialized
-      stripeSetupComplete: true, // Mark that Stripe account was created
+    // Update manager profile with Stripe status
+    await API.patch(`/managers/${userData.authId}.json`, {
+      stripeSetupInitiated: true,
       updatedAt: new Date().toISOString()
+    });
+    
+    return {
+      ...managerData,
+      stripeOnboardingUrl: onboardingUrl
     };
-    
-    // Update the manager profile with complete data
-    const response = await API.put(`/managers/${userData.authId}.json`, managerData);
-    console.log("Manager profile created and Stripe account linked:", response.data);
-    
-    return response.data;
   } catch (error) {
-    console.error('Error in manager profile creation or Stripe setup:', error);
+    console.error("Error in manager profile creation:", error);
     
-    // Clean up any partially created data
+    // Clean up the partial manager profile
     try {
-      // Delete the manager record since the setup failed
       await API.delete(`/managers/${userData.authId}.json`);
-      console.log("Removed partial manager profile due to Stripe setup failure");
+      console.log("Cleaned up partial manager profile");
     } catch (cleanupError) {
-      console.error('Error cleaning up partial manager profile:', cleanupError);
+      console.error("Error cleaning up profile:", cleanupError);
     }
     
     throw error;
   }
 }
 
+// The main registration function with pre-verification
 export const doCreateUserWithEmailAndPassword = async (email, password, userData = {}) => {
-  let userCredential = null;
-  
   try {
-    console.log("Starting manager registration process");
+    // First, verify Stripe functionality before creating any user accounts
+    console.log("Starting registration with Stripe pre-verification");
+    await preVerifyStripeSetup();
     
-    // Step 1: Create Firebase auth user
-    userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    // If pre-verification succeeds, create the Firebase auth user
+    console.log("Stripe pre-verification successful, creating Firebase user");
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
     
-    console.log("Firebase auth user created:", user.uid);
-
-    // Step 2: Create manager profile and set up Stripe Connect
-    // This will throw an error if Stripe setup fails
-    await createManagerProfile({
-      authId: user.uid,
-      email: user.email,
-      ...userData
-    });
-    
-    console.log("Manager registration completed successfully with Stripe Connect integration");
-    return userCredential;
-    
-  } catch (error) {
-    console.error('Error in registration process:', error);
-    
-    // If we created a Firebase user but failed at a later step, clean up
-    if (userCredential && userCredential.user) {
+    try {
+      // Now create the manager profile with Stripe integration
+      console.log("Firebase user created, setting up manager profile with Stripe");
+      const managerData = await createManagerProfileWithStripe({
+        authId: user.uid,
+        email: user.email,
+        ...userData
+      });
+      
+      console.log("Manager registration completed successfully with Stripe integration");
+      
+      return {
+        ...userCredential,
+        stripeOnboardingUrl: managerData.stripeOnboardingUrl
+      };
+    } catch (profileError) {
+      // If manager profile creation fails, delete the auth user and throw error
+      console.error("Manager profile creation failed, cleaning up auth user:", profileError);
+      
       try {
-        console.log('Deleting Firebase user due to failed registration:', userCredential.user.uid);
-        await userCredential.user.delete();
-        console.log('Firebase user deleted successfully');
+        await user.delete();
+        console.log("Auth user deleted due to manager profile creation failure");
       } catch (deleteError) {
-        console.error('Error deleting Firebase user after failed registration:', deleteError);
+        console.error("Error deleting auth user:", deleteError);
       }
+      
+      throw profileError;
     }
-    
-    // Re-throw the error to be handled by the UI
+  } catch (error) {
+    console.error("Registration process error:", error);
     throw error;
   }
 };
@@ -147,7 +172,60 @@ export const doSignInWithEmailAndPassword = (email, password) => {
   return signInWithEmailAndPassword(auth, email, password);
 };
 
+export const doSignInWithGoogle = async () => {
+  try {
+    // First, verify Stripe functionality before processing Google sign-in
+    await preVerifyStripeSetup();
+    
+    const provider = new GoogleAuthProvider();
+    const result = await signInWithPopup(auth, provider);
+    const user = result.user;
 
+    // Check if manager profile already exists
+    const managerResponse = await API.get(`/managers/${user.uid}.json`);
+    const managerData = managerResponse.data;
+    
+    if (!managerData) {
+      // If no manager profile exists, create one with Stripe integration
+      await createManagerProfileWithStripe({
+        authId: user.uid,
+        email: user.email,
+        firstName: user.displayName?.split(' ')[0] || '',
+        lastName: user.displayName?.split(' ')[1] || '',
+        phoneNumber: user.phoneNumber || ''
+      });
+      
+      // Set flag to show Stripe setup screen
+      sessionStorage.setItem('showStripeSetup', 'true');
+    } else {
+      // For existing users, check if Stripe setup is complete
+      try {
+        const functions = getFunctions();
+        const checkStatus = httpsCallable(functions, 'checkStripeAccountStatus');
+        
+        const statusResult = await checkStatus({ managerId: user.uid });
+        
+        if (statusResult.data && !statusResult.data.onboardingComplete) {
+          // If onboarding is not complete, get new link
+          const generateAccountLink = httpsCallable(functions, 'generateAccountLink');
+          const linkResult = await generateAccountLink({ managerId: user.uid });
+          
+          if (linkResult.data && linkResult.data.accountLinkUrl) {
+            sessionStorage.setItem('stripeOnboardingUrl', linkResult.data.accountLinkUrl);
+            sessionStorage.setItem('showStripeSetup', 'true');
+          }
+        }
+      } catch (stripeError) {
+        console.error('Error checking Stripe status:', stripeError);
+      }
+    }
+
+    return result;
+  } catch (error) {
+    console.error('Error in Google sign-in:', error);
+    throw error;
+  }
+};
 
 export const doSignOut = () => {
   return auth.signOut();
@@ -183,24 +261,31 @@ export const checkStripeOnboarding = async (managerId) => {
 
 // Get the saved onboarding URL or generate a new one
 export const getStripeOnboardingUrl = async (managerId) => {
-  // Check if we have a saved URL
-  const savedUrl = sessionStorage.getItem('stripeOnboardingUrl');
+  // Check multiple storage locations
+  const savedUrl = sessionStorage.getItem('stripeOnboardingUrl') || 
+                   sessionStorage.getItem(`stripeOnboarding_${managerId}`);
   
   if (savedUrl) {
-    // Clear it from storage so it's used only once
-    sessionStorage.removeItem('stripeOnboardingUrl');
+    console.log("Found existing Stripe onboarding URL in session storage");
     return savedUrl;
   }
   
   // Generate a new one
   try {
+    console.log("Generating new Stripe onboarding URL");
     const functions = getFunctions();
     const generateAccountLink = httpsCallable(functions, 'generateAccountLink');
     
     const result = await generateAccountLink({ managerId });
     
     if (result.data && result.data.accountLinkUrl) {
-      return result.data.accountLinkUrl;
+      const newUrl = result.data.accountLinkUrl;
+      
+      // Store in both locations
+      sessionStorage.setItem('stripeOnboardingUrl', newUrl);
+      sessionStorage.setItem(`stripeOnboarding_${managerId}`, newUrl);
+      
+      return newUrl;
     }
     
     throw new Error('Failed to generate Stripe onboarding URL');

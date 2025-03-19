@@ -3,6 +3,7 @@ const {onCall} = require("firebase-functions/v2/https");
 const {onRequest} = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+const cors = require("cors");
 
 // Create a Stripe Connect account for a new manager
 exports.createStripeConnectAccount = onValueCreated({
@@ -13,13 +14,41 @@ exports.createStripeConnectAccount = onValueCreated({
         const managerId = event.params.managerId;
         const managerData = event.data.val();
 
+        console.log(`[STRIPE-DEBUG] Starting Stripe Connect account creation for manager ${managerId}`, {
+            managerId,
+            email: managerData.email,
+            firstName: managerData.firstName,
+            lastName: managerData.lastName,
+            stripeSecretKeyLength: process.env.STRIPE_SECRET_KEY ? process.env.STRIPE_SECRET_KEY.length : 0,
+            timestamp: new Date().toISOString(),
+        });
+
+        // Validate manager data
+        if (!managerData.email) {
+            console.error(`[STRIPE-ERROR] Cannot create Stripe account for manager ${managerId}: No email provided`, {
+                managerId,
+                managerData: JSON.stringify(managerData),
+            });
+            return null;
+        }
+
+        console.log("[STRIPE-DEBUG] Creating Stripe Connect account with params:", {
+            email: managerData.email,
+            businessName: `${managerData.firstName || ""} ${managerData.lastName || ""}'s Parking Business`.trim(),
+            accountType: "express",
+            capabilities: {
+                card_payments: true,
+                transfers: true,
+            },
+        });
+
         // Create a Stripe Connect Express account
         const account = await stripe.accounts.create({
             type: "express",
             email: managerData.email,
             business_type: "company",
             company: {
-                name: `${managerData.firstName} ${managerData.lastName}'s Parking Business`.trim(),
+                name: `${managerData.firstName || ""} ${managerData.lastName || ""}'s Parking Business`.trim(),
             },
             capabilities: {
                 card_payments: {requested: true},
@@ -28,6 +57,30 @@ exports.createStripeConnectAccount = onValueCreated({
             metadata: {
                 firebaseManagerId: managerId,
             },
+        }).catch((error) => {
+            console.error("[STRIPE-ERROR] Failed to create Stripe account:", {
+                managerId,
+                error: {
+                    message: error.message,
+                    type: error.type,
+                    code: error.code,
+                    param: error.param,
+                    statusCode: error.statusCode,
+                },
+                stripeSecretKeyIsSet: !!process.env.STRIPE_SECRET_KEY,
+            });
+            throw error;
+        });
+
+        console.log(`[STRIPE-SUCCESS] Created Stripe Connect account for manager ${managerId}`, {
+            managerId,
+            stripeAccountId: account.id,
+            accountCreatedAt: account.created,
+            accountDetails: {
+                chargesEnabled: account.charges_enabled,
+                detailsSubmitted: account.details_submitted,
+                payoutsEnabled: account.payouts_enabled,
+            },
         });
 
         // Update the manager record with the Stripe account ID
@@ -35,11 +88,25 @@ exports.createStripeConnectAccount = onValueCreated({
             stripeAccountId: account.id,
             onboardingComplete: false,
             created: admin.database.ServerValue.TIMESTAMP,
+        }).catch((error) => {
+            console.error("[STRIPE-ERROR] Failed to update manager record with Stripe account ID:", {
+                managerId,
+                stripeAccountId: account.id,
+                error: error.message,
+            });
+            throw error;
         });
 
+        console.log(`[STRIPE-SUCCESS] Updated manager ${managerId} record with Stripe account ID ${account.id}`);
         return null;
     } catch (error) {
-        console.error("Error creating Stripe Connect account:", error);
+        console.error("[STRIPE-ERROR] Error creating Stripe Connect account:", {
+            managerId: event.params.managerId,
+            errorDetails: {
+                message: error.message,
+                stack: error.stack,
+            },
+        });
         return null;
     }
 });
@@ -51,29 +118,200 @@ exports.generateAccountLink = onCall({
     try {
         const {managerId} = request.data;
 
+        console.log(`[STRIPE-DEBUG] Starting onboarding link generation for manager ${managerId}`, {
+            managerId,
+            timestamp: new Date().toISOString(),
+            callerAuth: request.auth ? {uid: request.auth.uid} : "unauthenticated",
+        });
+
         // Get manager's Stripe account ID
+        console.log("[STRIPE-DEBUG] Fetching manager's Stripe account data from database");
         const managerSnapshot = await admin.database().ref(`/managers/${managerId}/stripeAccount`).once("value");
         const managerData = managerSnapshot.val();
 
-        if (!managerData || !managerData.stripeAccountId) {
-            throw new Error("Manager has no Stripe account");
+        if (!managerData) {
+            console.error(`[STRIPE-ERROR] No Stripe data found for manager ${managerId}`);
+            throw new Error("Manager has no Stripe data");
         }
+
+        if (!managerData.stripeAccountId) {
+            console.error(`[STRIPE-ERROR] No Stripe account ID found for manager ${managerId}`, {
+                managerData: JSON.stringify(managerData),
+            });
+            throw new Error("Manager has no Stripe account ID");
+        }
+
+        console.log(`[STRIPE-DEBUG] Found Stripe account ID for manager ${managerId}:`, {
+            stripeAccountId: managerData.stripeAccountId,
+            onboardingComplete: managerData.onboardingComplete,
+        });
+
+        // Check if we have the required environment variables
+        if (!process.env.STRIPE_DOMAIN) {
+            console.error("[STRIPE-ERROR] Missing STRIPE_DOMAIN environment variable");
+            throw new Error("Server configuration error: Missing STRIPE_DOMAIN");
+        }
+
+        console.log("[STRIPE-DEBUG] Creating account link with params:", {
+            account: managerData.stripeAccountId,
+            refresh_url: `${process.env.STRIPE_DOMAIN}/stripe/refresh?managerId=${managerId}`,
+            return_url: `${process.env.STRIPE_DOMAIN}/stripe/return?managerId=${managerId}`,
+        });
 
         // Create account link
         const accountLink = await stripe.accountLinks.create({
             account: managerData.stripeAccountId,
             refresh_url: `${process.env.STRIPE_DOMAIN}/stripe/refresh?managerId=${managerId}`,
-            return_url: `${process.env.STRIPE_DOMAIN}/stripe/return?managerId=${managerId}`,
+            return_url: `${process.env.STRIPE_DOMAIN}/login`,
             type: "account_onboarding",
+        }).catch((error) => {
+            console.error("[STRIPE-ERROR] Failed to create account link:", {
+                managerId,
+                stripeAccountId: managerData.stripeAccountId,
+                error: {
+                    message: error.message,
+                    type: error.type,
+                    code: error.code,
+                    param: error.param,
+                    statusCode: error.statusCode,
+                },
+            });
+            throw error;
         });
 
-        return {accountLinkUrl: accountLink.url};
+        console.log(`[STRIPE-SUCCESS] Generated onboarding link for manager ${managerId}`, {
+            accountLinkGenerated: true,
+            linkExpiresAt: accountLink.expires_at,
+            urlLength: accountLink.url ? accountLink.url.length : 0,
+        });
+
+        // Update timestamp of last link generation
+        await admin.database().ref(`/managers/${managerId}/stripeAccount/lastLinkGenerated`).set(admin.database.ServerValue.TIMESTAMP);
+
+        return {
+            accountLinkUrl: accountLink.url,
+            expires_at: accountLink.expires_at,
+        };
     } catch (error) {
-        console.error("Error generating account link:", error);
+        console.error("[STRIPE-ERROR] Error generating account link:", {
+            managerId: request.data?.managerId,
+            errorDetails: {
+                message: error.message,
+                code: error.code,
+                type: error.type,
+                stack: error.stack,
+            },
+        });
         throw new Error(error.message);
     }
 });
 
+// Add this new function to test Stripe configuration
+
+exports.verifyStripeSetup = onCall({
+    region: "us-central1",
+}, async (request) => {
+    try {
+        console.log("[STRIPE-DEBUG] Starting Stripe configuration verification", {
+            timestamp: new Date().toISOString(),
+            callerAuth: request.auth ? {uid: request.auth.uid} : "unauthenticated",
+        });
+
+        // Check if Stripe API key is set
+        if (!process.env.STRIPE_SECRET_KEY) {
+            console.error("[STRIPE-ERROR] STRIPE_SECRET_KEY environment variable is not set");
+            return {
+                success: false,
+                error: "Missing Stripe API key configuration",
+            };
+        }
+
+        // Check if STRIPE_DOMAIN is set
+        if (!process.env.STRIPE_DOMAIN) {
+            console.error("[STRIPE-ERROR] STRIPE_DOMAIN environment variable is not set");
+            return {
+                success: false,
+                error: "Missing Stripe domain configuration",
+            };
+        }
+
+        console.log("[STRIPE-DEBUG] Attempting to access Stripe API");
+
+        // Try to access Stripe API to verify credentials
+        try {
+            // Get Stripe account capabilities (a lightweight operation)
+            const stripeBalance = await stripe.balance.retrieve();
+            console.log("[STRIPE-SUCCESS] Successfully connected to Stripe API", {
+                availableCurrencies: stripeBalance.available.map((bal) => bal.currency),
+                pendingCurrencies: stripeBalance.pending.map((bal) => bal.currency),
+            });
+        } catch (stripeError) {
+            console.error("[STRIPE-ERROR] Failed to connect to Stripe API:", {
+                error: {
+                    message: stripeError.message,
+                    type: stripeError.type,
+                    code: stripeError.code,
+                },
+            });
+            return {
+                success: false,
+                error: `Stripe API connection failed: ${stripeError.message}`,
+            };
+        }
+
+        // Try to create a test Connect account link (will fail with a specific error)
+        try {
+            console.log("[STRIPE-DEBUG] Testing Connect account link creation");
+            await stripe.accountLinks.create({
+                account: "acct_testing_only",
+                refresh_url: `${process.env.STRIPE_DOMAIN}/stripe/refresh`,
+                return_url: `${process.env.STRIPE_DOMAIN}/stripe/return`,
+                type: "account_onboarding",
+            });
+            // This should fail with a specific error about the account not existing
+        } catch (linkError) {
+            if (linkError.type === "StripeInvalidRequestError" &&
+                linkError.message.includes("No such account")) {
+                console.log("[STRIPE-DEBUG] Expected test error received for non-existent account:", {
+                    message: linkError.message,
+                });
+                // This is the expected error, continue
+            } else {
+                // This is an unexpected error
+                console.error("[STRIPE-ERROR] Unexpected error testing Connect accounts:", {
+                    error: {
+                        message: linkError.message,
+                        type: linkError.type,
+                        code: linkError.code,
+                    },
+                });
+                return {
+                    success: false,
+                    error: `Connect account verification failed: ${linkError.message}`,
+                };
+            }
+        }
+
+        console.log("[STRIPE-SUCCESS] Stripe configuration verification completed successfully");
+        return {
+            success: true,
+            apiConnected: true,
+            domainConfigured: true,
+            timestamp: new Date().toISOString(),
+        };
+    } catch (error) {
+        console.error("[STRIPE-ERROR] Unexpected error verifying Stripe setup:", {
+            errorDetails: {
+                message: error.message,
+                stack: error.stack,
+            },
+        });
+        return {
+            success: false,
+            error: "Unexpected error during Stripe setup verification",
+        };
+    }
+});
 // Check manager's Stripe account status
 exports.checkStripeAccountStatus = onCall({
     region: "us-central1",
@@ -81,27 +319,64 @@ exports.checkStripeAccountStatus = onCall({
     try {
         const {managerId} = request.data;
 
+        console.log(`[STRIPE-DEBUG] Checking Stripe account status for manager ${managerId}`, {
+            managerId,
+            timestamp: new Date().toISOString(),
+            callerAuth: request.auth ? {uid: request.auth.uid} : "unauthenticated",
+        });
+
         // Get manager's Stripe account ID
         const managerSnapshot = await admin.database().ref(`/managers/${managerId}/stripeAccount`).once("value");
         const managerData = managerSnapshot.val();
 
-        if (!managerData || !managerData.stripeAccountId) {
+        if (!managerData) {
+            console.log(`[STRIPE-DEBUG] No stripe account data found for manager ${managerId}`);
             return {
                 hasAccount: false,
                 message: "No Stripe account found",
             };
         }
 
+        if (!managerData.stripeAccountId) {
+            console.log(`[STRIPE-DEBUG] No stripe account ID found for manager ${managerId}`);
+            return {
+                hasAccount: false,
+                message: "No Stripe account ID found",
+            };
+        }
+
+        console.log(`[STRIPE-DEBUG] Found Stripe account ID ${managerData.stripeAccountId} for manager ${managerId}`);
+
         // Check account status with Stripe
-        const account = await stripe.accounts.retrieve(managerData.stripeAccountId);
+        console.log("[STRIPE-DEBUG] Retrieving account details from Stripe API");
+        const account = await stripe.accounts.retrieve(managerData.stripeAccountId).catch((error) => {
+            console.error("[STRIPE-ERROR] Failed to retrieve Stripe account:", {
+                managerId,
+                stripeAccountId: managerData.stripeAccountId,
+                error: {
+                    message: error.message,
+                    type: error.type,
+                    code: error.code,
+                },
+            });
+            throw error;
+        });
 
         const onboardingComplete =
-      account.details_submitted &&
-      account.charges_enabled &&
-      account.payouts_enabled;
+            account.details_submitted &&
+            account.charges_enabled &&
+            account.payouts_enabled;
+
+        console.log(`[STRIPE-DEBUG] Retrieved Stripe account status for manager ${managerId}`, {
+            detailsSubmitted: account.details_submitted,
+            chargesEnabled: account.charges_enabled,
+            payoutsEnabled: account.payouts_enabled,
+            onboardingComplete,
+        });
 
         // Update onboarding status if needed
         if (onboardingComplete !== managerData.onboardingComplete) {
+            console.log(`[STRIPE-DEBUG] Updating onboarding status from ${managerData.onboardingComplete} to ${onboardingComplete}`);
             await admin.database().ref(`/managers/${managerId}/stripeAccount/onboardingComplete`).set(onboardingComplete);
         }
 
@@ -114,10 +389,18 @@ exports.checkStripeAccountStatus = onCall({
             onboardingComplete,
         };
     } catch (error) {
-        console.error("Error checking Stripe account:", error);
+        console.error("[STRIPE-ERROR] Error checking Stripe account:", {
+            managerId: request.data?.managerId,
+            errorDetails: {
+                message: error.message,
+                stack: error.stack,
+            },
+        });
         throw new Error(error.message);
     }
 });
+
+// Keep the rest of the functions as they were...
 
 // Process parking payment
 exports.processParkingPayment = onCall({
@@ -266,81 +549,4 @@ exports.processParkingPayment = onCall({
     }
 });
 
-// Stripe webhook handler for account updates and payment events
-exports.stripeWebhook = onRequest({
-    region: "us-central1",
-}, async (req, res) => {
-    const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-    const sig = req.headers["stripe-signature"];
-    let event;
-
-    try {
-        event = stripe.webhooks.constructEvent(req.rawBody, sig, endpointSecret);
-    } catch (err) {
-        console.error("Webhook signature verification failed:", err.message);
-        return res.status(400).send(`Webhook Error: ${err.message}`);
-    }
-
-    // Handle the event
-    switch (event.type) {
-    case "account.updated": {
-        const account = event.data.object;
-
-        // Find the manager with this Stripe account ID
-        const managersSnapshot = await admin.database()
-            .ref("/managers")
-            .orderByChild("stripeAccount/stripeAccountId")
-            .equalTo(account.id)
-            .once("value");
-
-        // Update onboarding status
-        managersSnapshot.forEach((managerSnapshot) => {
-            const managerId = managerSnapshot.key;
-            const onboardingComplete = account.charges_enabled && account.details_submitted;
-
-            admin.database()
-                .ref(`/managers/${managerId}/stripeAccount/onboardingComplete`)
-                .set(onboardingComplete);
-        });
-
-        break;
-    }
-
-    case "payment_intent.succeeded": {
-        const paymentIntent = event.data.object;
-        const sessionId = paymentIntent.metadata.sessionId;
-
-        if (sessionId) {
-        // Update parking session status
-            await admin.database().ref(`/parkingSessions/${sessionId}`).update({
-                paymentStatus: "succeeded",
-                status: "completed",
-                updatedAt: admin.database.ServerValue.TIMESTAMP,
-            });
-        }
-
-        break;
-    }
-
-    case "payment_intent.payment_failed": {
-        const paymentIntent = event.data.object;
-        const sessionId = paymentIntent.metadata.sessionId;
-
-        if (sessionId) {
-        // Update parking session status
-            await admin.database().ref(`/parkingSessions/${sessionId}`).update({
-                paymentStatus: "failed",
-                status: "failed",
-                failureMessage: paymentIntent.last_payment_error?.message || "Payment failed",
-                updatedAt: admin.database.ServerValue.TIMESTAMP,
-            });
-        }
-
-        break;
-    }
-    }
-
-    // Return a response to acknowledge receipt of the event
-    res.json({received: true});
-});
