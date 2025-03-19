@@ -65,6 +65,29 @@ export const cancelSubscription = async (userId, subscriptionId) => {
         // Remove subscription from database
         await API.delete(`/subscriptions/${subscriptionId}.json`);
 
+        // Fetch the subscription details before deletion (if not fetched earlier)
+        const subscriptionResponse = await API.get(`/subscriptions/${subscriptionId}.json`);
+        const subscriptionData = subscriptionResponse.data;
+
+        if (!subscriptionData) {
+            throw new Error("Subscription details not found.");
+        }
+
+        const parkingLotId = subscriptionData.parkingLotId;
+
+        // Fetch current available subscription spots
+        const parkingLotResponse = await API.get(`/parkingLots/${parkingLotId}/availableSpots.json`);
+        const availableSubscriptionSpots = parkingLotResponse.data.subscription;
+
+        // Increment the subscription spot by 1
+        const updatedSpots = availableSubscriptionSpots + 1;
+
+        // Update Firebase with the incremented value
+        await API.patch(`/parkingLots/${parkingLotId}/availableSpots.json`, {
+            subscription: updatedSpots
+        });
+
+
         return subscriptions;
     } catch (error) {
         console.error("Error canceling subscription:", error);

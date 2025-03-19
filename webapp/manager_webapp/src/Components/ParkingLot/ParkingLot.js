@@ -136,67 +136,88 @@ const ParkingLot = () => {
       </div>
       <table className="parking-lot-table">
         <tbody>
-          <tr>
-            <td>Lot ID</td>
-            <td>{parkingLot.id}</td>
-          </tr>
-          <tr>
-            <td>Name</td>
-            <td><input type="text" name="name" value={formData.name} onChange={handleChange} /></td>
-          </tr>
-          <tr>
-            <td>Location</td>
-            <td><input type="text" name="location" value={formData.location} onChange={handleChange} /></td>
-          </tr>
-          <tr>
-            <td>Phone Number</td>
-            <td><input type="text" name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} /></td>
-          </tr>
-          <tr>
-            <td>Hourly Rate (Weekday)</td>
-            <td><input type="number" name="hourlyRateWeekday" value={formData.hourlyRateWeekday} onChange={handleChange} /></td>
-          </tr>
-          <tr>
-            <td>Daily Rate (Weekday)</td>
-            <td><input type="number" name="dailyRateWeekday" value={formData.dailyRateWeekday} onChange={handleChange} /></td>
-          </tr>
-          <tr>
-            <td>Hourly Rate (Weekend)</td>
-            <td><input type="number" name="hourlyRateWeekend" value={formData.hourlyRateWeekend} onChange={handleChange} /></td>
-          </tr>
-          <tr>
-            <td>Daily Rate (Weekend)</td>
-            <td><input type="number" name="dailyRateWeekend" value={formData.dailyRateWeekend} onChange={handleChange} /></td>
-          </tr>
-          <tr>
-            <td>Subscription Rate</td>
-            <td><input type="number" name="subscriptionRate" value={formData.subscriptionRate} onChange={handleChange} /></td>
-          </tr>
-          <tr>
-            <td>Available Spots</td>
-            <td>
-              <div>Total General Spots: {getTotalSpots("general")}</div>
-              <div>Total EV Spots: {getTotalSpots("EV")}</div>
-              <div>Total Handicapped Spots: {getTotalSpots("handicapped")}</div>
-              <div>Total Subscription Spots: {getTotalSpots("subscription")}</div>
-            </td>
-          </tr>
-          <tr>
-            <td>Floors</td>
-            <td>
-              {formData.floors.length > 0 ? (
+        <tr>
+          <td>Lot ID</td>
+          <td>{parkingLot.id}</td>
+        </tr>
+        <tr>
+          <td>Name</td>
+          <td><input type="text" name="name" value={formData.name} onChange={handleChange}/></td>
+        </tr>
+        <tr>
+          <td>Location</td>
+          <td><input type="text" name="location" value={formData.location} onChange={handleChange}/></td>
+        </tr>
+        <tr>
+          <td>Phone Number</td>
+          <td><input type="text" name="phoneNumber" value={formData.phoneNumber} onChange={handleChange}/></td>
+        </tr>
+        <tr>
+          <td>Hourly Rate (Weekday)</td>
+          <td><input type="number" name="hourlyRateWeekday" value={formData.hourlyRateWeekday} onChange={handleChange}/>
+          </td>
+        </tr>
+        <tr>
+          <td>Daily Rate (Weekday)</td>
+          <td><input type="number" name="dailyRateWeekday" value={formData.dailyRateWeekday} onChange={handleChange}/>
+          </td>
+        </tr>
+        <tr>
+          <td>Hourly Rate (Weekend)</td>
+          <td><input type="number" name="hourlyRateWeekend" value={formData.hourlyRateWeekend} onChange={handleChange}/>
+          </td>
+        </tr>
+        <tr>
+          <td>Daily Rate (Weekend)</td>
+          <td><input type="number" name="dailyRateWeekend" value={formData.dailyRateWeekend} onChange={handleChange}/>
+          </td>
+        </tr>
+        <tr>
+          <td>Subscription Rate</td>
+          <td><input type="number" name="subscriptionRate" value={formData.subscriptionRate} onChange={handleChange}/>
+          </td>
+        </tr>
+        <tr>
+          <td>Available Spots</td>
+          <td>
+            <div className="spots-grid">
+              <div className="spot-card">
+                <span className="spot-type">General</span>
+                <span className="spot-count">{getTotalSpots("general")}</span>
+              </div>
+              <div className="spot-card">
+                <span className="spot-type">EV</span>
+                <span className="spot-count">{getTotalSpots("EV")}</span>
+              </div>
+              <div className="spot-card">
+                <span className="spot-type">Handicapped</span>
+                <span className="spot-count">{getTotalSpots("handicapped")}</span>
+              </div>
+              <div className="spot-card">
+                <span className="spot-type">Subscription</span>
+                <span className="spot-count">{getTotalSpots("subscription")}</span>
+              </div>
+            </div>
+          </td>
+        </tr>
+
+
+        <tr>
+          <td>Floors</td>
+          <td>
+            {formData.floors.length > 0 ? (
                 formData.floors.map((floor, index) => (
-                  <div key={index} className="item-row">
-                    <span>Floor {floor.floorId}</span>
-                    <button className="manage-button" onClick={() => handleManageFloor(floor.floorId)}>Manage</button>
-                  </div>
+                    <div key={index} className="item-row">
+                      <span>Floor {floor.floorId}</span>
+                      <button className="manage-button" onClick={() => handleManageFloor(floor.floorId)}>Manage</button>
+                    </div>
                 ))
-              ) : (
+            ) : (
                 <span>No floors available.</span>
-              )}
-              <button className="add-floor-button" onClick={handleAddFloor}>New Floor</button>
-            </td>
-          </tr>
+            )}
+            <button className="add-floor-button" onClick={handleAddFloor}>New Floor</button>
+          </td>
+        </tr>
         </tbody>
       </table>
       <div className="button-container">

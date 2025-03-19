@@ -68,7 +68,7 @@ const ParkingLog = () => {
               <th>Phone Number</th>
               <th>Entry Time</th>
               <th>Exit Time</th>
-              <th>Duration (hrs)</th>
+              <th>Duration (min)</th>
               <th>Amount Charged ($)</th>
               <th>Payment Status</th>
             </tr>

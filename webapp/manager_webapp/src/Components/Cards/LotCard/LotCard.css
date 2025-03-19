@@ -65,7 +65,7 @@
   cursor: pointer;
   transition: all 0.3s ease, box-shadow 0.3s ease;
   white-space: nowrap;
-  margin: 0 auto;
+  margin: 10px auto;
   min-width: 200px;
   box-shadow: 0 6px 12px rgba(33, 150, 243, 0.4);
 }
