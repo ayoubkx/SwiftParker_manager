@@ -50,6 +50,6 @@ npm start
 
 - Node.js and npm installed on your system.
 
-4. Use the Expo Go app on your mobile device to scan the QR code and run the app, or run on Android/iOS simulators using:
+
 
 
